@@ -2887,11 +2887,12 @@ body {
 }
 
 /* 1. Online Mode - Globe & Pawns */
+/* Globe uses --accent-cyan → --accent-blue → deep navy */
 .globe-sphere {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #60a5fa, #2563eb 55%, #1e3a8a 100%);
+    background: radial-gradient(circle at 35% 35%, #06b6d4, #3b82f6 55%, #1e3a8a 100%);
     box-shadow: 
         0 5px 12px rgba(0, 0, 0, 0.5),
         inset -6px -6px 14px rgba(0, 0, 0, 0.75),
@@ -2900,11 +2901,17 @@ body {
     overflow: hidden;
 }
 
+/* Globe continents use --accent-emerald */
 .globe-map {
     position: absolute;
     width: 200%;
     height: 100%;
-    background: repeating-linear-gradient(90deg, transparent, transparent 12px, rgba(16, 185, 129, 0.85) 12px, rgba(16, 185, 129, 0.85) 24px);
+    background: repeating-linear-gradient(
+        90deg,
+        transparent, transparent 12px,
+        rgba(16, 185, 129, 0.85) 12px,
+        rgba(16, 185, 129, 0.85) 24px
+    );
     opacity: 0.8;
     animation: rotateGlobeMap 15s linear infinite;
     -webkit-mask-image: radial-gradient(circle, black 50%, transparent 50%);
@@ -2912,7 +2919,7 @@ body {
 }
 
 @keyframes rotateGlobeMap {
-    0% { transform: translateX(0); }
+    0%   { transform: translateX(0); }
     100% { transform: translateX(-50%); }
 }
 
@@ -2926,7 +2933,7 @@ body {
     justify-content: center;
 }
 
-/* Pawn 3D design using layered gradients & box-shadows */
+/* ── Pawn base (head ::before / body ::after) ── */
 .pawn {
     width: 15px;
     height: 24px;
@@ -2935,7 +2942,6 @@ body {
 }
 
 .pawn::before {
-    /* Head of the pawn */
     content: '';
     position: absolute;
     top: 0;
@@ -2949,7 +2955,6 @@ body {
 }
 
 .pawn::after {
-    /* Body of the pawn */
     content: '';
     position: absolute;
     bottom: 0;
@@ -2962,34 +2967,29 @@ body {
     z-index: 1;
 }
 
-.pawn-green::before { background: radial-gradient(circle at 35% 35%, #a7f3d0, #059669); }
-.pawn-green::after { background: linear-gradient(180deg, #10b981, #064e3b); }
+/* Pawn colors — all from project palette */
+.pawn-green::before  { background: radial-gradient(circle at 35% 35%, #6ee7b7, #10b981); }
+.pawn-green::after   { background: linear-gradient(180deg, #10b981, #064e3b); }
 
-.pawn-yellow::before { background: radial-gradient(circle at 35% 35%, #fef08a, #ca8a04); }
-.pawn-yellow::after { background: linear-gradient(180deg, #eab308, #78350f); }
+.pawn-yellow::before { background: radial-gradient(circle at 35% 35%, #fde68a, #f59e0b); }
+.pawn-yellow::after  { background: linear-gradient(180deg, #f59e0b, #78350f); }
 
-.pawn-red::before { background: radial-gradient(circle at 35% 35%, #fecaca, #dc2626); }
-.pawn-red::after { background: linear-gradient(180deg, #ef4444, #7f1d1d); }
+.pawn-red::before    { background: radial-gradient(circle at 35% 35%, #fca5a5, #ef4444); }
+.pawn-red::after     { background: linear-gradient(180deg, #ef4444, #7f1d1d); }
 
-.pawn-blue::before { background: radial-gradient(circle at 35% 35%, #bfdbfe, #2563eb); }
-.pawn-blue::after { background: linear-gradient(180deg, #3b82f6, #1e3a8a); }
+.pawn-purple::before { background: radial-gradient(circle at 35% 35%, #d8b4fe, #a855f7); }
+.pawn-purple::after  { background: linear-gradient(180deg, #a855f7, #4c1d95); }
 
-/* Custom arrangement of pawns in the Globe */
-.online-graphic .pawn-green {
-    transform: scale(0.9) translateY(4px) rotate(-12deg);
-}
-.online-graphic .pawn-yellow {
-    transform: scale(1.1) translateY(0);
-    z-index: 10;
-}
-.online-graphic .pawn-red {
-    transform: scale(0.9) translateY(4px) rotate(12deg);
-}
+.pawn-blue::before   { background: radial-gradient(circle at 35% 35%, #93c5fd, #3b82f6); }
+.pawn-blue::after    { background: linear-gradient(180deg, #3b82f6, #1e3a8a); }
 
-/* 2. Play with Friends - Heart & Hugging Pawns */
-.friends-graphic {
-    position: relative;
-}
+/* Globe pawn positions */
+.online-graphic .pawn-green  { transform: scale(0.9) translateY(4px) rotate(-12deg); }
+.online-graphic .pawn-yellow { transform: scale(1.1) translateY(0); z-index: 10; }
+.online-graphic .pawn-red    { transform: scale(0.9) translateY(4px) rotate(12deg); }
+
+/* ── 2. Play with Friends — Heart & Hugging Pawns ── */
+.friends-graphic { position: relative; }
 
 .heart-pawns-wrapper {
     display: flex;
@@ -2999,9 +2999,10 @@ body {
     width: 100%;
 }
 
+/* Heart uses --accent-pink glow */
 .heart-3d {
     font-size: 1.85rem;
-    filter: drop-shadow(0 3px 6px rgba(225, 29, 72, 0.7));
+    filter: drop-shadow(0 3px 6px rgba(236, 72, 153, 0.75));
     animation: heartbeat 1.3s infinite ease-in-out;
     position: relative;
     z-index: 10;
@@ -3010,26 +3011,19 @@ body {
 
 @keyframes heartbeat {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.18); }
+    50%       { transform: scale(1.18); }
 }
 
-.friends-graphic .pawn-green {
-    transform: scale(1) rotate(-8deg) translateY(2px);
-    margin-right: -4px;
-}
+.friends-graphic .pawn-green  { transform: scale(1) rotate(-8deg) translateY(2px); margin-right: -4px; }
+.friends-graphic .pawn-yellow { transform: scale(1) rotate(8deg)  translateY(2px); margin-left: -4px; }
 
-.friends-graphic .pawn-yellow {
-    transform: scale(1) rotate(8deg) translateY(2px);
-    margin-left: -4px;
-}
-
-/* Small floating bubble with microphone */
+/* Mic bubble — --accent-amber */
 .chat-mic-bubble {
     position: absolute;
     top: -5px;
     right: 3px;
-    background: linear-gradient(135deg, #fef08a 0%, #f59e0b 100%);
-    border: 1.5px solid #ffffff;
+    background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
     border-radius: 50%;
     width: 21px;
     height: 21px;
@@ -3037,26 +3031,27 @@ body {
     align-items: center;
     justify-content: center;
     font-size: 0.68rem;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.35), 0 0 8px rgba(245, 158, 11, 0.4);
     z-index: 12;
     animation: floatBubble 1.8s infinite alternate ease-in-out;
 }
 
 @keyframes floatBubble {
-    0% { transform: translateY(0); }
+    0%   { transform: translateY(0); }
     100% { transform: translateY(-3px); }
 }
 
-/* 3. Computer Mode - Smartphone & VS Shield */
+/* ── 3. Computer Mode — Smartphone & VS Shield ── */
+/* Body: dark navy (--bg-primary/secondary) with --accent-blue border */
 .smartphone-3d {
     width: 32px;
     height: 52px;
-    background: linear-gradient(135deg, #64748b 0%, #334155 100%);
-    border: 2.5px solid #94a3b8;
+    background: linear-gradient(135deg, #1e3a8a 0%, #0d1a3c 100%);
+    border: 2.5px solid #3b82f6;
     border-radius: 7px;
     box-shadow: 
         0 5px 12px rgba(0, 0, 0, 0.5),
-        inset 0 1px 2px rgba(255, 255, 255, 0.35);
+        inset 0 1px 2px rgba(59, 130, 246, 0.35);
     padding: 2px;
     display: flex;
     align-items: center;
@@ -3065,10 +3060,11 @@ body {
     box-sizing: border-box;
 }
 
+/* Screen: --bg-primary */
 .smartphone-screen {
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle, #1e293b 0%, #0f172a 100%);
+    background: radial-gradient(circle, #0a0e1a 0%, #020617 100%);
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -3076,8 +3072,9 @@ body {
     overflow: hidden;
 }
 
+/* VS Shield: --accent-amber → --accent-red */
 .vs-shield {
-    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
     border: 1.5px solid #fbbf24;
     border-radius: 4px;
     padding: 1px 4px;
@@ -3093,19 +3090,20 @@ body {
 
 @keyframes pulseShield {
     from { transform: rotate(-10deg) scale(1.05); box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
-    to { transform: rotate(-10deg) scale(1.22); box-shadow: 0 0 10px rgba(251,191,36,0.7); }
+    to   { transform: rotate(-10deg) scale(1.22); box-shadow: 0 0 12px rgba(245, 158, 11, 0.7); }
 }
 
-/* 4. Local Mode - Board & Micro Pawns */
+/* ── 4. Local Mode — Mini Board & Pawns ── */
+/* Board: dark navy with --accent-blue border, matches wrapper card style */
 .board-3d {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
-    border: 2.5px solid #64748b;
+    background: linear-gradient(135deg, #1e3a8a 0%, #0d1a3c 100%);
+    border: 2.5px solid #3b82f6;
     border-radius: 7px;
     box-shadow: 
         0 5px 12px rgba(0, 0, 0, 0.5),
-        inset 0 1.5px 2.5px rgba(255, 255, 255, 0.7);
+        inset 0 1.5px 2.5px rgba(59, 130, 246, 0.3);
     position: relative;
     padding: 3px;
     box-sizing: border-box;
@@ -3118,18 +3116,17 @@ body {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
     gap: 2.5px;
-    background: #475569;
+    background: #0a0e1a;
     border-radius: 4px;
 }
 
-.board-cell-mini {
-    border-radius: 1.5px;
-}
+.board-cell-mini { border-radius: 1.5px; }
 
-.board-cell-mini.yel { background: radial-gradient(circle, #fde047 10%, #ca8a04 90%); }
-.board-cell-mini.blu { background: radial-gradient(circle, #3b82f6 10%, #1d4ed8 90%); }
-.board-cell-mini.grn { background: radial-gradient(circle, #10b981 10%, #047857 90%); }
-.board-cell-mini.red { background: radial-gradient(circle, #ef4444 10%, #b91c1c 90%); }
+/* Board cells = bingo column colors: col-g (amber), col-i (blue), col-n (emerald), col-o (red) */
+.board-cell-mini.yel { background: radial-gradient(circle, #fbbf24 10%, #f59e0b 90%); }
+.board-cell-mini.blu { background: radial-gradient(circle, #06b6d4 10%, #3b82f6 90%); }
+.board-cell-mini.grn { background: radial-gradient(circle, #34d399 10%, #10b981 90%); }
+.board-cell-mini.red { background: radial-gradient(circle, #f87171 10%, #ef4444 90%); }
 
 .board-pawns {
     position: absolute;
@@ -3146,10 +3143,8 @@ body {
     border: 0.5px solid rgba(255,255,255,0.2);
 }
 
-.pawn-yel { background: linear-gradient(180deg, #fef08a, #ca8a04); top: 7px; left: 7px; }
-.pawn-blu { background: linear-gradient(180deg, #93c5fd, #2563eb); top: 7px; right: 7px; }
-.pawn-grn { background: linear-gradient(180deg, #a7f3d0, #059669); bottom: 7px; left: 7px; }
-.pawn-red { background: linear-gradient(180deg, #fecaca, #dc2626); bottom: 7px; right: 7px; }
-
-
-
+/* Mini pawn colors — project palette */
+.pawn-yel { background: linear-gradient(180deg, #fde68a, #f59e0b); top: 7px; left: 7px; }
+.pawn-blu { background: linear-gradient(180deg, #67e8f9, #06b6d4); top: 7px; right: 7px; }
+.pawn-grn { background: linear-gradient(180deg, #6ee7b7, #10b981); bottom: 7px; left: 7px; }
+.pawn-red { background: linear-gradient(180deg, #fca5a5, #ef4444); bottom: 7px; right: 7px; }
