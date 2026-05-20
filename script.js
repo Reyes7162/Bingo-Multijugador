@@ -242,10 +242,336 @@ function initLobbyPremium() {
     if (nameInputEl) nameInputEl.value = (savedName === 'Tu Nombre' ? '' : savedName);
     if (coinsDisplayEl) coinsDisplayEl.textContent = savedCoins.toLocaleString();
     if (gemsDisplayEl) gemsDisplayEl.textContent = savedGems.toLocaleString();
+
+    // Cargar cosméticos equipados al iniciar
+    applyEquippedCosmetics();
 }
 
 // Escuchar DOMContentLoaded para cargar valores iniciales del Lobby
 window.addEventListener('DOMContentLoaded', initLobbyPremium);
+
+// --- Clasificación (Leaderboard) ---
+function openLeaderboard() {
+    playBallDrawSound();
+    const modal = document.getElementById('leaderboard-modal');
+    if (!modal) return;
+
+    const myCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+    const myName = localStorage.getItem('bingo_user_name') || 'Tu Nombre';
+    const myLvl = Math.floor(myCoins / 10000) + 1;
+
+    let players = [
+        { name: 'Reyes7162 👑', coins: 1250000, lvl: 95, isMe: false },
+        { name: 'CasinoKing 🎰', coins: 850000, lvl: 84, isMe: false },
+        { name: 'BingoMaster 🎲', coins: 500000, lvl: 71, isMe: false },
+        { name: 'LuckyStar ⭐', coins: 250000, lvl: 42, isMe: false },
+        { name: 'PlayerOne 🎮', coins: 100000, lvl: 15, isMe: false }
+    ];
+
+    players.push({ name: myName + ' (Tú)', coins: myCoins, lvl: myLvl, isMe: true });
+    players.sort((a, b) => b.coins - a.coins);
+
+    let html = '<div class="leaderboard-list">';
+    players.forEach((p, index) => {
+        const rank = index + 1;
+        let medal = rank;
+        if (rank === 1) medal = '🥇';
+        else if (rank === 2) medal = '🥈';
+        else if (rank === 3) medal = '🥉';
+
+        html += `
+            <div class="leaderboard-item ${p.isMe ? 'me' : ''}">
+                <div class="leaderboard-player-info">
+                    <span class="leaderboard-rank">${medal}</span>
+                    <span class="leaderboard-name">${p.name} <small style="opacity: 0.6; font-size: 0.7rem;">Nivel ${p.lvl}</small></span>
+                </div>
+                <div class="leaderboard-score">
+                    <span>${p.coins.toLocaleString()}</span> 🪙
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    document.getElementById('leaderboard-container').innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+// --- Logros y Misiones ---
+const achievementDefs = [
+    { id: 'ach_spin', title: '🎡 Primer Giro', desc: 'Gira la ruleta de la suerte.', statKey: 'stat_spins', target: 1, rewardType: 'coins', rewardAmount: 500 },
+    { id: 'ach_slots', title: '🎰 Slot Master', desc: 'Juega a los slots de la suerte 3 veces.', statKey: 'stat_slots', target: 3, rewardType: 'coins_gems', rewardCoins: 1000, rewardGems: 20 },
+    { id: 'ach_host', title: '📢 Creador de Juegos', desc: 'Crea una sala de bingo como anfitrión.', statKey: 'stat_hosts', target: 1, rewardType: 'coins_gems', rewardCoins: 2000, rewardGems: 50 }
+];
+
+function openAchievements() {
+    playBallDrawSound();
+    const modal = document.getElementById('achievements-modal');
+    if (!modal) return;
+
+    let html = '<div class="achievements-list">';
+    achievementDefs.forEach(ach => {
+        const progress = parseInt(localStorage.getItem(ach.statKey) || '0', 10);
+        const claimed = localStorage.getItem('ach_claimed_' + ach.id) === 'true';
+        const isClaimable = progress >= ach.target && !claimed;
+
+        const progressPercent = Math.min((progress / ach.target) * 100, 100);
+
+        let rewardText = '';
+        if (ach.rewardType === 'coins') rewardText = `+${ach.rewardAmount.toLocaleString()} 🪙`;
+        else if (ach.rewardType === 'gems') rewardText = `+${ach.rewardAmount.toLocaleString()} 💎`;
+        else if (ach.rewardType === 'coins_gems') rewardText = `+${ach.rewardCoins.toLocaleString()} 🪙 / +${ach.rewardGems} 💎`;
+
+        let btnClass = 'btn-claim-achievement locked';
+        let btnText = 'Bloqueado';
+        let btnAction = '';
+
+        if (claimed) {
+            btnClass = 'btn-claim-achievement claimed';
+            btnText = 'Reclamado';
+        } else if (isClaimable) {
+            btnClass = 'btn-claim-achievement claimable';
+            btnText = 'Reclamar';
+            btnAction = `onclick="claimAchievementAction('${ach.id}')"`;
+        }
+
+        html += `
+            <div class="achievement-item">
+                <div class="achievement-top">
+                    <div>
+                        <div class="achievement-title">${ach.title}</div>
+                        <div class="achievement-desc">${ach.desc}</div>
+                    </div>
+                    <button class="${btnClass}" ${btnAction}>${btnText}</button>
+                </div>
+                <div class="achievement-progress-row">
+                    <div class="achievement-progress-bar-bg">
+                        <div class="achievement-progress-bar-fill" style="width: ${progressPercent}%;"></div>
+                    </div>
+                    <span class="achievement-progress-text">${progress}/${ach.target} (${rewardText})</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    document.getElementById('achievements-container').innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function claimAchievementAction(id) {
+    const ach = achievementDefs.find(a => a.id === id);
+    if (!ach) return;
+
+    localStorage.setItem('ach_claimed_' + id, 'true');
+    playWinSound();
+    launchConfetti();
+
+    let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+    let gems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10);
+
+    let toastText = '';
+    if (ach.rewardType === 'coins') {
+        coins += ach.rewardAmount;
+        toastText = `+${ach.rewardAmount.toLocaleString()} Monedas`;
+    } else if (ach.rewardType === 'gems') {
+        gems += ach.rewardAmount;
+        toastText = `+${ach.rewardAmount.toLocaleString()} Gemas`;
+    } else if (ach.rewardType === 'coins_gems') {
+        coins += ach.rewardCoins;
+        gems += ach.rewardGems;
+        toastText = `+${ach.rewardCoins.toLocaleString()} Monedas y +${ach.rewardGems} Gemas`;
+    }
+
+    localStorage.setItem('bingo_coins', coins.toString());
+    localStorage.setItem('bingo_gems', gems.toString());
+
+    const coinsDisp = document.getElementById('lobby-coins-display');
+    const gemsDisp = document.getElementById('lobby-gems-display');
+    if (coinsDisp) coinsDisp.textContent = coins.toLocaleString();
+    if (gemsDisp) gemsDisp.textContent = gems.toLocaleString();
+
+    showLobbyToast('info', '🏅 Logro Reclamado', toastText);
+    openAchievements();
+}
+
+// --- Tienda Premium ---
+const storeItems = [
+    { id: 'frame_gold', name: 'Marco Fuego Dorado', desc: 'Borde de avatar dorado brillante.', price: 10000, priceType: 'coins', category: 'frame', icon: '🔥' },
+    { id: 'frame_pink', name: 'Marco Cyber Neón', desc: 'Borde rosa neón futurista.', price: 100, priceType: 'gems', category: 'frame', icon: '👾' },
+    { id: 'dabber_crown', name: 'Ficha Corona', desc: 'Marca tus celdas de Bingo con una corona.', price: 20000, priceType: 'coins', category: 'dabber', icon: '👑', value: '👑' },
+    { id: 'dabber_star', name: 'Ficha Estrella', desc: 'Marca tus celdas con una estrella brillante.', price: 50, priceType: 'gems', category: 'dabber', icon: '⭐', value: '⭐' }
+];
+
+function openStore() {
+    playBallDrawSound();
+    const modal = document.getElementById('store-modal');
+    if (!modal) return;
+
+    let html = '<div class="store-grid">';
+    storeItems.forEach(item => {
+        const isOwned = localStorage.getItem('store_owned_' + item.id) === 'true';
+        const isEquipped = localStorage.getItem('equipped_' + item.category) === item.id;
+
+        let btnClass = 'btn-store-buy buy';
+        let btnText = item.priceType === 'coins' ? `${item.price.toLocaleString()} 🪙` : `${item.price} 💎`;
+        let btnAction = `onclick="buyStoreItem('${item.id}')"`;
+
+        if (isEquipped) {
+            btnClass = 'btn-store-buy equipped';
+            btnText = 'Equipado';
+            btnAction = '';
+        } else if (isOwned) {
+            btnClass = 'btn-store-buy equip';
+            btnText = 'Equipar';
+            btnAction = `onclick="equipStoreItem('${item.id}')"`;
+        }
+
+        html += `
+            <div class="store-item">
+                <div class="store-item-info">
+                    <div class="store-item-icon">${item.icon}</div>
+                    <div class="store-item-details">
+                        <span class="store-item-name">${item.name}</span>
+                        <span class="store-item-desc">${item.desc}</span>
+                    </div>
+                </div>
+                <button class="${btnClass}" ${btnAction}>${btnText}</button>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    document.getElementById('store-container').innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function buyStoreItem(itemId) {
+    const item = storeItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+    let gems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10);
+
+    if (item.priceType === 'coins') {
+        if (coins < item.price) {
+            playErrorSound();
+            showLobbyToast('info', '🪙 Monedas Insuficientes', `Necesitas ${item.price.toLocaleString()} monedas.`);
+            return;
+        }
+        coins -= item.price;
+        localStorage.setItem('bingo_coins', coins.toString());
+        const display = document.getElementById('lobby-coins-display');
+        if (display) display.textContent = coins.toLocaleString();
+    } else {
+        if (gems < item.price) {
+            playErrorSound();
+            showLobbyToast('info', '💎 Gemas Insuficientes', `Necesitas ${item.price} gemas.`);
+            return;
+        }
+        gems -= item.price;
+        localStorage.setItem('bingo_gems', gems.toString());
+        const display = document.getElementById('lobby-gems-display');
+        if (display) display.textContent = gems.toLocaleString();
+    }
+
+    localStorage.setItem('store_owned_' + itemId, 'true');
+    playCoinSound();
+    showLobbyToast('info', '🏪 Compra Realizada', `Compraste "${item.name}"`);
+    openStore();
+}
+
+function equipStoreItem(itemId) {
+    const item = storeItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    localStorage.setItem('equipped_' + item.category, itemId);
+    playCoinSound();
+    showLobbyToast('info', '✨ Aspecto Equipado', `Equipaste "${item.name}"`);
+    applyEquippedCosmetics();
+    openStore();
+}
+
+function applyEquippedCosmetics() {
+    const equippedFrame = localStorage.getItem('equipped_frame');
+    const avatarContainer = document.querySelector('.lobby-profile-avatar-container');
+    if (avatarContainer) {
+        avatarContainer.classList.remove('frame-golden-fire', 'frame-cyber-pink');
+        if (equippedFrame === 'frame_gold') {
+            avatarContainer.classList.add('frame-golden-fire');
+        } else if (equippedFrame === 'frame_pink') {
+            avatarContainer.classList.add('frame-cyber-pink');
+        }
+    }
+
+    const equippedDabber = localStorage.getItem('equipped_dabber');
+    if (equippedDabber) {
+        const item = storeItems.find(i => i.id === equippedDabber);
+        if (item && item.value) {
+            document.body.style.setProperty('--dabber-content', `"${item.value}"`);
+        } else {
+            document.body.style.removeProperty('--dabber-content');
+        }
+    } else {
+        document.body.style.removeProperty('--dabber-content');
+    }
+}
+
+// --- Historial ---
+function openHistory() {
+    playBallDrawSound();
+    const modal = document.getElementById('history-modal');
+    if (!modal) return;
+
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('bingo_game_history') || '[]');
+    } catch(e) {}
+
+    if (history.length === 0) {
+        history = [
+            { date: 'Hace 1 hora', type: 'Jugador', result: '3er Lugar', prize: '+500 🪙' },
+            { date: 'Ayer', type: 'Anfitrión', result: 'Sala Completada', prize: '+1,500 🪙' }
+        ];
+        localStorage.setItem('bingo_game_history', JSON.stringify(history));
+    }
+
+    let html = '<div class="leaderboard-list">';
+    history.forEach(entry => {
+        html += `
+            <div class="leaderboard-item">
+                <div class="leaderboard-player-info">
+                    <span class="leaderboard-rank">🎮</span>
+                    <span class="leaderboard-name">${entry.type} <small style="opacity: 0.6; font-size: 0.7rem;">(${entry.date})</small></span>
+                </div>
+                <div class="leaderboard-score" style="color: #34d399;">
+                    <span>${entry.result}</span> <small style="opacity: 0.8; font-size: 0.75rem; margin-left: 5px;">${entry.prize}</small>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    document.getElementById('history-container').innerHTML = html;
+    modal.classList.remove('hidden');
+}
+
+function addGameToHistory(type, result, prize) {
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('bingo_game_history') || '[]');
+    } catch(e) {}
+
+    history.unshift({
+        date: 'Hace un momento',
+        type: type,
+        result: result,
+        prize: prize
+    });
+
+    if (history.length > 10) history.pop();
+    localStorage.setItem('bingo_game_history', JSON.stringify(history));
+}
 
 function editProfileName() {
     playBallDrawSound();
@@ -486,6 +812,11 @@ function spinWheelAction() {
         } else {
             isWheelSpinning = false;
             if (spinBtn) spinBtn.disabled = false;
+            
+            // Incrementar estadísticas para el logro
+            const currentSpins = parseInt(localStorage.getItem('stat_spins') || '0', 10);
+            localStorage.setItem('stat_spins', (currentSpins + 1).toString());
+            
             claimWheelPrize(wheelPrizes[winningIndex]);
         }
     }
@@ -605,6 +936,11 @@ function spinSlotsAction() {
                 spinBtn.disabled = false;
                 spinBtn.querySelector('span').textContent = 'Jugar (100 🪙)';
             }
+            
+            // Incrementar estadísticas para el logro
+            const currentSlots = parseInt(localStorage.getItem('stat_slots') || '0', 10);
+            localStorage.setItem('stat_slots', (currentSlots + 1).toString());
+            
             evaluateSlotsResult(result);
         }
     }, 80);
@@ -1842,6 +2178,17 @@ function setupSocketEvents() {
             // Auto Play y Sacar bolilla activos para el host
             document.getElementById('draw-btn').disabled = false;
             document.getElementById('auto-btn').disabled = false;
+
+            // Incrementar estadísticas y dar recompensa por crear sala
+            const currentHosts = parseInt(localStorage.getItem('stat_hosts') || '0', 10);
+            localStorage.setItem('stat_hosts', (currentHosts + 1).toString());
+            addGameToHistory('Anfitrión', 'Sala Creada', '+2,000 🪙');
+
+            let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 2000;
+            localStorage.setItem('bingo_coins', coins.toString());
+            const display = document.getElementById('lobby-coins-display');
+            if (display) display.textContent = coins.toLocaleString();
+            showLobbyToast('coins', '📢 Sala de Bingo Creada', '¡Recibiste 2,000 🪙 como anfitrión!');
         } else if (state.gameMode === 'player') {
             document.getElementById('caller-section').classList.add('hidden');
             document.getElementById('card-section').classList.remove('hidden');
@@ -1852,6 +2199,14 @@ function setupSocketEvents() {
             // Auto Play y Sacar bolilla desactivados para el jugador
             document.getElementById('draw-btn').disabled = true;
             document.getElementById('auto-btn').disabled = true;
+
+            // Registrar unión a sala en el historial
+            addGameToHistory('Jugador', 'Sala Unida', '+100 🪙');
+            let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 100;
+            localStorage.setItem('bingo_coins', coins.toString());
+            const display = document.getElementById('lobby-coins-display');
+            if (display) display.textContent = coins.toLocaleString();
+            showLobbyToast('coins', '🔌 Unido a Sala', '¡Recibiste 100 🪙 por participar!');
         }
 
         // Mostrar Badge del Código de la Sala en el header
@@ -2006,6 +2361,32 @@ function setupSocketEvents() {
 
         // Ocultar botón cantar Bingo
         document.getElementById('claim-bingo-btn').classList.add('hidden');
+
+        // Recompensar al jugador si es el ganador
+        if (socket && socket.connected) {
+            const myPlayerId = 'p_' + socket.id.substr(0, 5);
+            const wonAmount = parseInt(data.prize || '0', 10);
+            if (data.winnerId === myPlayerId) {
+                let currentCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+                currentCoins += wonAmount;
+                localStorage.setItem('bingo_coins', currentCoins.toString());
+                const display = document.getElementById('lobby-coins-display');
+                if (display) display.textContent = currentCoins.toLocaleString();
+                
+                showLobbyToast('coins', '🎉 ¡FELICIDADES!', `Ganaste el Bingo y te llevas ${wonAmount.toLocaleString()} 🪙!`);
+                addGameToHistory('Jugador', '¡Victoria!', `+${wonAmount.toLocaleString()} 🪙`);
+            } else {
+                if (state.gameMode === 'player') {
+                    addGameToHistory('Jugador', 'Derrota', '0 🪙');
+                } else {
+                    addGameToHistory('Anfitrión', 'Partida Finalizada', '+500 🪙');
+                    let currentCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 500;
+                    localStorage.setItem('bingo_coins', currentCoins.toString());
+                    const display = document.getElementById('lobby-coins-display');
+                    if (display) display.textContent = currentCoins.toLocaleString();
+                }
+            }
+        }
 
         // Mostrar pantalla de celebración con confetti
         setTimeout(() => {

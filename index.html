@@ -241,10 +241,10 @@
 
             <!-- Bottom Navigation Tabs Footer -->
             <footer class="lobby-premium-footer">
-                <button class="lobby-footer-tab" onclick="showLobbyMessage('🏆 Clasificación', 'Próximamente: Tabla de Clasificación Global. ¡Compite por ser el rey del Bingo!')" title="Clasificación">
+                <button class="lobby-footer-tab" onclick="openLeaderboard()" title="Clasificación">
                     <span class="footer-tab-icon">🏆</span>
                 </button>
-                <button class="lobby-footer-tab" onclick="showLobbyMessage('🏅 Logros', 'Próximamente: Logros y Misiones diarias para ganar Monedas y Gemas.')" title="Logros">
+                <button class="lobby-footer-tab" onclick="openAchievements()" title="Logros">
                     <span class="footer-tab-icon">🏅</span>
                 </button>
                 <button class="lobby-footer-tab active" title="Inicio">
@@ -252,10 +252,10 @@
                         <span class="footer-tab-icon home">🏠</span>
                     </div>
                 </button>
-                <button class="lobby-footer-tab" onclick="showLobbyMessage('🎲 Historial', 'Próximamente: Consulta tus últimas partidas, cartones comprados y premios ganados.')" title="Historial">
+                <button class="lobby-footer-tab" onclick="openHistory()" title="Historial">
                     <span class="footer-tab-icon">🎲</span>
                 </button>
-                <button class="lobby-footer-tab" onclick="showLobbyMessage('🏪 Tienda', 'Próximamente: Tienda de Skins, Fichas personalizadas, Marcos dorados y Emoticones.')" title="Tienda">
+                <button class="lobby-footer-tab" onclick="openStore()" title="Tienda">
                     <span class="footer-tab-icon">🏪</span>
                 </button>
             </footer>
@@ -411,6 +411,62 @@
                     <p id="message-modal-text" class="premium-modal-text">Esta función estará disponible muy pronto.</p>
                     <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('lobby-message-modal')">
                         <span>Entendido</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. Leaderboard Modal -->
+            <div id="leaderboard-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🏆 Clasificación</h3>
+                    <p class="premium-modal-subtitle">Los reyes de la sala de Bingo</p>
+                    <div class="modal-scrollable-body" id="leaderboard-container">
+                        <!-- Carga dinámica desde JavaScript -->
+                    </div>
+                    <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('leaderboard-modal')">
+                        <span>Cerrar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 7. Achievements Modal -->
+            <div id="achievements-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🏅 Logros y Misiones</h3>
+                    <p class="premium-modal-subtitle">Completa desafíos y reclama premios</p>
+                    <div class="modal-scrollable-body" id="achievements-container">
+                        <!-- Carga dinámica desde JavaScript -->
+                    </div>
+                    <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('achievements-modal')">
+                        <span>Cerrar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 8. Store Modal -->
+            <div id="store-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🏪 Tienda Premium</h3>
+                    <p class="premium-modal-subtitle">Equipa skins, marcos de avatar y fichas</p>
+                    <div class="modal-scrollable-body" id="store-container">
+                        <!-- Carga dinámica desde JavaScript -->
+                    </div>
+                    <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('store-modal')">
+                        <span>Cerrar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 9. History Modal -->
+            <div id="history-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🎲 Historial</h3>
+                    <p class="premium-modal-subtitle">Tus últimas partidas y estadísticas</p>
+                    <div class="modal-scrollable-body" id="history-container">
+                        <!-- Carga dinámica desde JavaScript -->
+                    </div>
+                    <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('history-modal')">
+                        <span>Cerrar</span>
                     </button>
                 </div>
             </div>
