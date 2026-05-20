@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Juego de Bingo interactivo y multijugador real. Modos de Pantalla Compartida y Anfitrión/Jugador.">
+    <title>🎱 Bingo Real Multijugador</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+    <!-- PWA configuration for mobile app behavior -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/8065/8065538.png">
+    <!-- Socket.io client library for real-time multiplayer -->
+    <script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io no detectado. Cargando en modo local offline.')"></script>
+</head>
+<body>
+    <!-- Floating Background Effects -->
+    <div class="background-effects">
+        <div class="floating-orb orb-1"></div>
+        <div class="floating-orb orb-2"></div>
+        <div class="floating-orb orb-3"></div>
+        <div class="floating-orb orb-4"></div>
+    </div>
+
+    <div id="confetti-container"></div>
+
+    <!-- Lobby / Welcome Screen -->
+    <div id="lobby-screen" class="lobby-overlay">
+        <div class="lobby-content glass-panel">
+            <h1 class="logo lobby-logo">
+                <span class="logo-icon">🎱</span>
+                <span class="logo-text">BINGO</span>
+            </h1>
+            <p class="lobby-tagline">Elige cómo jugar hoy con tus amigos y familia</p>
+
+            <!-- Main Mode Selection Grid -->
+            <div id="lobby-modes-main" class="lobby-modes-grid">
+                <!-- Shared Screen Mode -->
+                <button class="lobby-mode-card" onclick="selectGameMode('shared')">
+                    <div class="mode-card-badge">¡Más divertido!</div>
+                    <span class="lobby-mode-icon">📺</span>
+                    <h3 class="lobby-mode-title">Pantalla Compartida</h3>
+                    <p class="lobby-mode-desc">Ideal para PC o conectar a la TV de la sala. Registra varios jugadores reales y jueguen todos juntos en una sola pantalla.</p>
+                </button>
+
+                <!-- Separated Devices Group -->
+                <div class="lobby-mode-group">
+                    <div class="group-title">📱 Dispositivos Separados (Multi-móvil)</div>
+                    
+                    <button class="lobby-mode-card card-sub" onclick="selectGameMode('host')">
+                        <span class="lobby-mode-icon icon-sub">📢</span>
+                        <h3 class="lobby-mode-title title-sub">Anfitrión (Solo Bolillero)</h3>
+                        <p class="lobby-mode-desc desc-sub">Esta pantalla solo cantará los números y mostrará el tablero gigante en tu TV o PC principal.</p>
+                    </button>
+
+                    <button class="lobby-mode-card card-sub" onclick="selectGameMode('player')">
+                        <span class="lobby-mode-icon icon-sub">🎟️</span>
+                        <h3 class="lobby-mode-title title-sub">Jugador (Solo Cartones)</h3>
+                        <p class="lobby-mode-desc desc-sub">Juega en tu propio teléfono móvil comprando tus cartones. Marca los números que escuches del Anfitrión.</p>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Connection & Setup Form (Animated slide-in, initially hidden) -->
+            <div id="connection-setup" class="connection-box hidden">
+                <h3 id="setup-title" class="lobby-mode-title text-center">Configurar Conexión</h3>
+                
+                <div id="setup-name-group" class="input-group">
+                    <label for="player-name-input">Nombre en el Juego:</label>
+                    <input type="text" id="player-name-input" class="modern-input" placeholder="Tu apodo o nombre..." maxlength="12">
+                </div>
+                
+                <div class="color-picker-wrapper mt-sm" id="setup-color-picker">
+                    <p class="color-picker-label">Color de tu Ficha:</p>
+                    <div class="color-options">
+                        <div class="color-opt color-purple active" data-color="#8b5cf6" onclick="selectPlayerColor(this, '#8b5cf6')"></div>
+                        <div class="color-opt color-blue" data-color="#3b82f6" onclick="selectPlayerColor(this, '#3b82f6')"></div>
+                        <div class="color-opt color-emerald" data-color="#10b981" onclick="selectPlayerColor(this, '#10b981')"></div>
+                        <div class="color-opt color-amber" data-color="#f59e0b" onclick="selectPlayerColor(this, '#f59e0b')"></div>
+                        <div class="color-opt color-pink" data-color="#ec4899" onclick="selectPlayerColor(this, '#ec4899')"></div>
+                    </div>
+                </div>
+
+                <div class="input-group mt-sm">
+                    <label for="server-url-input">Dirección del Servidor:</label>
+                    <input type="text" id="server-url-input" class="modern-input" placeholder="Detectando automáticamente...">
+                </div>
+
+                <div class="setup-actions">
+                    <button class="btn-primary w-100" onclick="connectToServer()">
+                        <span class="btn-icon">🔌</span>
+                        <span id="setup-connect-btn-text">¡Unirse al Bingo en Vivo!</span>
+                    </button>
+                    <button class="btn-outline w-100 mt-xs" onclick="cancelSetup()">
+                        <span>Cancelar</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="lobby-footer mt-md">
+                <p>💸 Todos los modos incluyen saldo inicial de 100 monedas para comprar cartones.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen (Hidden initially) -->
+    <div id="game-interface" class="hidden">
+        <header id="main-header">
+            <div class="header-left">
+                <button id="back-to-lobby-btn" class="btn-back" onclick="backToLobby()" title="Volver al menú principal">
+                    <span>← Menú</span>
+                </button>
+            </div>
+            <div class="header-center">
+                <h1 class="logo">
+                    <span class="logo-icon">🎱</span>
+                    <span class="logo-text">BINGO</span>
+                </h1>
+                <p id="mode-indicator" class="tagline">Modo Multijugador</p>
+            </div>
+            <div class="header-right">
+                <div class="audio-controls">
+                    <button id="sound-toggle" class="audio-btn active" onclick="toggleSound()" title="Efectos de sonido">
+                        <span id="sound-icon">🔊</span>
+                        <span id="sound-label">Sonido</span>
+                    </button>
+                    <button id="voice-toggle" class="audio-btn active" onclick="toggleVoice()" title="Voz que canta los números">
+                        <span id="voice-icon">🗣️</span>
+                        <span id="voice-label">Voz</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main id="game-container" class="layout-three-columns">
+            <!-- COLUMN 1: Caller Section -->
+            <section id="caller-section" class="glass-panel">
+                <h2 class="section-title">Bolillero</h2>
+                <div id="ball-display">
+                    <div id="current-ball" class="ball-container">
+                        <div class="ball-inner">
+                            <span id="ball-letter" class="ball-letter">?</span>
+                            <span id="ball-number" class="ball-number">--</span>
+                        </div>
+                    </div>
+                    <p id="call-announcement" class="call-text">Presiona "Sacar Bolilla" para comenzar</p>
+                </div>
+                
+                <div class="caller-actions">
+                    <button id="draw-btn" class="btn-primary" onclick="drawNumber()">
+                        <span class="btn-icon">🎰</span>
+                        <span>Sacar Bolilla</span>
+                    </button>
+                    <button id="auto-btn" class="btn-secondary" onclick="toggleAutoPlay()">
+                        <span class="btn-icon">⚡</span>
+                        <span id="auto-btn-text">Auto Play</span>
+                    </button>
+                    <button id="start-early-btn" class="btn-primary hidden" onclick="startHostGameEarly()" style="background: var(--gradient-win); border: 1px solid var(--accent-amber); font-weight: 800; box-shadow: var(--shadow-glow-gold);">
+                        <span class="btn-icon">🚀</span>
+                        <span>Iniciar Partida Ya</span>
+                    </button>
+                </div>
+
+                <div id="called-numbers-panel">
+                    <h3 class="panel-subtitle">Bolillas Cantadas <span id="called-count" class="badge">0/75</span></h3>
+                    <div id="called-numbers-grid">
+                        <div class="called-column">
+                            <div class="called-header called-b">B</div>
+                            <div id="called-B" class="called-list"></div>
+                        </div>
+                        <div class="called-column">
+                            <div class="called-header called-i">I</div>
+                            <div id="called-I" class="called-list"></div>
+                        </div>
+                        <div class="called-column">
+                            <div class="called-header called-n">N</div>
+                            <div id="called-N" class="called-list"></div>
+                        </div>
+                        <div class="called-column">
+                            <div class="called-header called-g">G</div>
+                            <div id="called-G" class="called-list"></div>
+                        </div>
+                        <div class="called-column">
+                            <div class="called-header called-o">O</div>
+                            <div id="called-O" class="called-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COLUMN 2: Cards Grid -->
+            <section id="card-section">
+                <!-- Lobby Countdown Panel (Visible only during lobby status in multiplayer) -->
+                <div id="lobby-countdown-panel" class="lobby-countdown-panel glass-panel hidden">
+                    <div class="countdown-circle-wrapper">
+                        <div class="countdown-pulse-ring"></div>
+                        <span id="lobby-time-left" class="countdown-number">02:00</span>
+                    </div>
+                    <div class="countdown-info-block">
+                        <h3 class="countdown-title">Sala de Espera</h3>
+                        <p class="countdown-subtitle">Compra tus cartones y prepárate. ¡El Bingo inicia pronto!</p>
+                        <div class="countdown-pot-display">
+                            <span class="pot-icon">🏆</span>
+                            <span>Pozo inicial: </span>
+                            <span id="lobby-pot-display-amount" class="pot-highlight">0</span>
+                            <span> monedas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-header">
+                    <h2 class="section-title" id="card-section-title">Cartones en Juego</h2>
+                    <div class="card-actions-row">
+                        <!-- Pot display -->
+                        <div id="pot-badge" class="pot-display-panel">
+                            <span class="pot-icon">🏆</span>
+                            <span class="pot-label">Pozo:</span>
+                            <span id="pot-amount" class="pot-value">0</span>
+                            <span class="pot-currency">monedas</span>
+                        </div>
+                        <!-- Cantar Bingo Button for live play -->
+                        <button id="claim-bingo-btn" class="btn-primary hidden" onclick="claimBingo()" style="background: var(--gradient-win); border: 1px solid var(--accent-amber); font-weight: 800; padding: 8px 16px; border-radius: var(--radius-md); box-shadow: var(--shadow-glow-gold);">
+                            🏆 ¡BINGO! 🏆
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scrollable grid of active cards -->
+                <div id="cards-container-grid" class="cards-layout-grid">
+                    <!-- Cards will be generated dynamically by JS here -->
+                    <div class="no-cards-placeholder glass-panel">
+                        <span class="placeholder-icon">🎟️</span>
+                        <p>No hay cartones en juego.</p>
+                        <p class="placeholder-subtext">Compra cartones desde el panel de jugadores para empezar la ronda.</p>
+                    </div>
+                </div>
+
+                <!-- Universal Win Pattern Selector -->
+                <div id="win-mode-selector" class="glass-panel mode-panel">
+                    <h3 class="panel-subtitle">Patrón para Ganar</h3>
+                    <div class="mode-options">
+                        <button class="mode-btn active" data-mode="line" onclick="setWinMode('line', this)" id="mode-line">
+                            <span class="mode-icon">➖</span>
+                            <span>Línea</span>
+                        </button>
+                        <button class="mode-btn" data-mode="two-lines" onclick="setWinMode('two-lines', this)" id="mode-two-lines">
+                            <span class="mode-icon">═</span>
+                            <span>Dos Líneas</span>
+                        </button>
+                        <button class="mode-btn" data-mode="full" onclick="setWinMode('full', this)" id="mode-full">
+                            <span class="mode-icon">🏆</span>
+                            <span>Cartón Lleno</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COLUMN 3: Players / Shop Section -->
+            <section id="players-section" class="glass-panel">
+                <div class="players-panel-header">
+                    <h2 class="section-title">Jugadores</h2>
+                    <button id="add-player-btn" class="btn-small-accent" onclick="openAddPlayerModal()">
+                        <span>+ Añadir</span>
+                    </button>
+                </div>
+
+                <div class="player-global-controls">
+                    <!-- Auto Daub Toggle for players -->
+                    <label class="toggle-control">
+                        <input type="checkbox" id="auto-daub-check" onchange="toggleAutoDaub(this.checked)">
+                        <span class="control-label">⚡ Auto-Marcar números</span>
+                    </label>
+                </div>
+
+                <!-- Dynamic list of players with coin balances & card buy buttons -->
+                <div id="players-list-container" class="players-list">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="shop-legend">
+                    <p class="legend-text">💸 Cada cartón nuevo cuesta **10 monedas**.</p>
+                    <p class="legend-text">🏆 ¡El ganador del Bingo se lleva el pozo entero!</p>
+                </div>
+
+                <div class="round-control-actions">
+                    <button id="reset-round-btn" class="btn-outline w-100" onclick="resetRound()">
+                        <span class="btn-icon">🔄</span>
+                        <span>Reiniciar Ronda</span>
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Win Modal -->
+    <div id="win-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <div class="modal-celebration">🎉🏆🎉</div>
+            <h2 class="modal-title">¡¡BINGO!!</h2>
+            <p class="modal-subtitle" id="win-message">¡Felicidades, has ganado!</p>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="newGame()">
+                    <span class="btn-icon">🎮</span>
+                    <span>Siguiente Ronda</span>
+                </button>
+                <button class="btn-outline" onclick="closeModal()">
+                    <span>Cerrar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Player Modal (Simple overlay) -->
+    <div id="add-player-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel add-player-box">
+            <h3 class="modal-title-small">Nuevo Jugador</h3>
+            <p class="modal-desc">Ingresa el nombre del participante real:</p>
+            <input type="text" id="new-player-name-input" class="modern-input" placeholder="Nombre (ej. Mamá, Juan...)" maxlength="15">
+            
+            <div class="color-picker-wrapper">
+                <p class="color-picker-label">Color del cartón:</p>
+                <div class="color-options">
+                    <div class="color-opt color-purple active" data-color="#8b5cf6" onclick="selectPlayerColor(this, '#8b5cf6')"></div>
+                    <div class="color-opt color-blue" data-color="#3b82f6" onclick="selectPlayerColor(this, '#3b82f6')"></div>
+                    <div class="color-opt color-emerald" data-color="#10b981" onclick="selectPlayerColor(this, '#10b981')"></div>
+                    <div class="color-opt color-amber" data-color="#f59e0b" onclick="selectPlayerColor(this, '#f59e0b')"></div>
+                    <div class="color-opt color-pink" data-color="#ec4899" onclick="selectPlayerColor(this, '#ec4899')"></div>
+                </div>
+            </div>
+
+            <div class="modal-actions mt-md">
+                <button class="btn-primary" onclick="submitAddPlayer()">
+                    <span>Agregar</span>
+                </button>
+                <button class="btn-outline" onclick="closeAddPlayerModal()">
+                    <span>Cancelar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer id="main-footer">
+        <p>Hecho con ❤️ — Bingo Real Multijugador 2026</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

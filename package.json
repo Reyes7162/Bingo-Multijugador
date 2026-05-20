@@ -1,0 +1,17 @@
+{
+  "name": "bingo-real-multijugador",
+  "version": "1.0.0",
+  "description": "Juego de Bingo Real Multijugador en red para jugar con tu localidad en tiempo real.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "share": "npx localtunnel --port 3000"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "author": "Antigravity",
+  "license": "MIT"
+}

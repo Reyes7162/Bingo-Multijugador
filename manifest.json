@@ -1,0 +1,18 @@
+{
+  "name": "Bingo Real Multijugador",
+  "short_name": "Bingo Real",
+  "description": "Juego de Bingo Real Multijugador en tiempo real.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0c1b",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8065/8065538.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
