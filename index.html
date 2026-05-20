@@ -108,11 +108,18 @@
                         <button class="lobby-mode-btn-premium host-btn-3d" onclick="selectGameMode('host')">
                             <div class="btn-3d-gloss"></div>
                             <div class="btn-3d-content">
-                                <div class="btn-3d-icon-container">
-                                    <span class="btn-3d-icon">📢</span>
+                                <div class="custom-3d-graphic online-graphic">
+                                    <div class="globe-sphere">
+                                        <div class="globe-map"></div>
+                                    </div>
+                                    <div class="pawns-container">
+                                        <div class="pawn pawn-green"></div>
+                                        <div class="pawn pawn-yellow"></div>
+                                        <div class="pawn pawn-red"></div>
+                                    </div>
                                 </div>
-                                <h3 class="btn-3d-title">Crear Sala</h3>
-                                <span class="btn-3d-subtitle">Anfitrión (PC/TV)</span>
+                                <h3 class="btn-3d-title">Online</h3>
+                                <span class="btn-3d-subtitle">Crear Sala</span>
                             </div>
                         </button>
 
@@ -120,20 +127,29 @@
                         <button class="lobby-mode-btn-premium player-btn-3d" onclick="selectGameMode('player')">
                             <div class="btn-3d-gloss"></div>
                             <div class="btn-3d-content">
-                                <div class="btn-3d-icon-container">
-                                    <span class="btn-3d-icon">🎟️</span>
+                                <div class="custom-3d-graphic friends-graphic">
+                                    <div class="chat-mic-bubble">🎤</div>
+                                    <div class="heart-pawns-wrapper">
+                                        <div class="pawn pawn-green"></div>
+                                        <div class="heart-3d">❤️</div>
+                                        <div class="pawn pawn-yellow"></div>
+                                    </div>
                                 </div>
-                                <h3 class="btn-3d-title">Unirse a Sala</h3>
-                                <span class="btn-3d-subtitle">Jugador (Celular)</span>
+                                <h3 class="btn-3d-title">Con Amigos</h3>
+                                <span class="btn-3d-subtitle">Unirse a Sala</span>
                             </div>
                         </button>
 
                         <!-- Versus Computer Mode (Yellow) - Labeled locked/próximamente -->
-                        <button class="lobby-mode-btn-premium computer-btn-3d locked" onclick="alert('Modo Contra PC: ¡Próximamente en la siguiente actualización!')">
+                        <button class="lobby-mode-btn-premium computer-btn-3d locked" onclick="alert('Modo Contra PC: ¡Próximamente!')">
                             <div class="btn-3d-gloss"></div>
                             <div class="btn-3d-content">
-                                <div class="btn-3d-icon-container">
-                                    <span class="btn-3d-icon">🤖</span>
+                                <div class="custom-3d-graphic computer-graphic">
+                                    <div class="smartphone-3d">
+                                        <div class="smartphone-screen">
+                                            <div class="vs-shield">VS</div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <h3 class="btn-3d-title">Contra PC</h3>
                                 <span class="btn-3d-subtitle">Práctica (Solo)</span>
@@ -142,11 +158,24 @@
                         </button>
 
                         <!-- Local Board Mode (Blue) - Labeled locked/próximamente -->
-                        <button class="lobby-mode-btn-premium local-btn-3d locked" onclick="alert('Modo Local / Sin Red: ¡Próximamente!')">
+                        <button class="lobby-mode-btn-premium local-btn-3d locked" onclick="alert('Modo Local: ¡Próximamente!')">
                             <div class="btn-3d-gloss"></div>
                             <div class="btn-3d-content">
-                                <div class="btn-3d-icon-container">
-                                    <span class="btn-3d-icon">🏠</span>
+                                <div class="custom-3d-graphic local-graphic">
+                                    <div class="board-3d">
+                                        <div class="board-grid-lines">
+                                            <div class="board-cell-mini yel"></div>
+                                            <div class="board-cell-mini blu"></div>
+                                            <div class="board-cell-mini grn"></div>
+                                            <div class="board-cell-mini red"></div>
+                                        </div>
+                                        <div class="board-pawns">
+                                            <div class="mini-pawn pawn-yel"></div>
+                                            <div class="mini-pawn pawn-blu"></div>
+                                            <div class="mini-pawn pawn-grn"></div>
+                                            <div class="mini-pawn pawn-red"></div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <h3 class="btn-3d-title">Modo Local</h3>
                                 <span class="btn-3d-subtitle">Sin Conexión</span>
