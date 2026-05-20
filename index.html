@@ -40,35 +40,31 @@
 
             <!-- Main Mode Selection Grid -->
             <div id="lobby-modes-main" class="lobby-modes-grid">
-                <!-- Shared Screen Mode -->
-                <button class="lobby-mode-card" onclick="selectGameMode('shared')">
-                    <div class="mode-card-badge">¡Más divertido!</div>
-                    <span class="lobby-mode-icon">📺</span>
-                    <h3 class="lobby-mode-title">Pantalla Compartida</h3>
-                    <p class="lobby-mode-desc">Ideal para PC o conectar a la TV de la sala. Registra varios jugadores reales y jueguen todos juntos en una sola pantalla.</p>
+                <!-- Host Mode -->
+                <button class="lobby-mode-card" onclick="selectGameMode('host')">
+                    <div class="mode-card-badge" style="background: var(--gradient-purple);">Anfitrión</div>
+                    <span class="lobby-mode-icon">📢</span>
+                    <h3 class="lobby-mode-title">Crear Nueva Sala</h3>
+                    <p class="lobby-mode-desc">Ideal para PC o conectar a la TV. Tú creas la sala, controlas el bolillero y cantas las bolillas del juego. Tus amigos se unirán usando tu código único.</p>
                 </button>
 
-                <!-- Separated Devices Group -->
-                <div class="lobby-mode-group">
-                    <div class="group-title">📱 Dispositivos Separados (Multi-móvil)</div>
-                    
-                    <button class="lobby-mode-card card-sub" onclick="selectGameMode('host')">
-                        <span class="lobby-mode-icon icon-sub">📢</span>
-                        <h3 class="lobby-mode-title title-sub">Anfitrión (Solo Bolillero)</h3>
-                        <p class="lobby-mode-desc desc-sub">Esta pantalla solo cantará los números y mostrará el tablero gigante en tu TV o PC principal.</p>
-                    </button>
-
-                    <button class="lobby-mode-card card-sub" onclick="selectGameMode('player')">
-                        <span class="lobby-mode-icon icon-sub">🎟️</span>
-                        <h3 class="lobby-mode-title title-sub">Jugador (Solo Cartones)</h3>
-                        <p class="lobby-mode-desc desc-sub">Juega en tu propio teléfono móvil comprando tus cartones. Marca los números que escuches del Anfitrión.</p>
-                    </button>
-                </div>
+                <!-- Player Mode -->
+                <button class="lobby-mode-card" onclick="selectGameMode('player')">
+                    <div class="mode-card-badge" style="background: var(--gradient-amber); color: var(--text-dark);">Jugador</div>
+                    <span class="lobby-mode-icon">🎟️</span>
+                    <h3 class="lobby-mode-title">Unirse a una Sala</h3>
+                    <p class="lobby-mode-desc">Ideal para jugar desde tu teléfono celular. Ingresa el código de la sala de tu amigo, compra tus propios cartones y marca los números en vivo.</p>
+                </button>
             </div>
 
             <!-- Connection & Setup Form (Animated slide-in, initially hidden) -->
             <div id="connection-setup" class="connection-box hidden">
                 <h3 id="setup-title" class="lobby-mode-title text-center">Configurar Conexión</h3>
+                
+                <div id="setup-room-code-group" class="input-group hidden">
+                    <label for="room-code-input">Código de la Sala (4 dígitos):</label>
+                    <input type="text" id="room-code-input" class="modern-input" placeholder="Ej: 1234" maxlength="4" style="text-align: center; letter-spacing: 8px; font-weight: 800; font-size: 1.5rem; text-transform: uppercase;">
+                </div>
                 
                 <div id="setup-name-group" class="input-group">
                     <label for="player-name-input">Nombre en el Juego:</label>
@@ -94,7 +90,7 @@
                 <div class="setup-actions">
                     <button class="btn-primary w-100" onclick="connectToServer()">
                         <span class="btn-icon">🔌</span>
-                        <span id="setup-connect-btn-text">¡Unirse al Bingo en Vivo!</span>
+                        <span id="setup-connect-btn-text">¡Crear Sala en Vivo!</span>
                     </button>
                     <button class="btn-outline w-100 mt-xs" onclick="cancelSetup()">
                         <span>Cancelar</span>
@@ -122,6 +118,11 @@
                     <span class="logo-text">BINGO</span>
                 </h1>
                 <p id="mode-indicator" class="tagline">Modo Multijugador</p>
+                <div id="room-badge-container" class="room-badge-container hidden" onclick="copyRoomCode()" title="Haz clic para copiar el código de invitación">
+                    <span class="room-badge-icon">🔑</span>
+                    <span>Sala: </span>
+                    <strong id="room-id-display" class="room-id-display">----</strong>
+                </div>
             </div>
             <div class="header-right">
                 <div class="audio-controls">

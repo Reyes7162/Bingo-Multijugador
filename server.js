@@ -1,5 +1,5 @@
 /* =============================================
-   BINGO REAL MULTIJUGADOR — Servidor Backend
+   BINGO REAL MULTIJUGADOR — Servidor Backend (Salas Aisladas)
    ============================================= */
 
 const express = require('express');
@@ -21,19 +21,8 @@ const PORT = process.env.PORT || 3000;
 // Servir archivos estáticos del juego (HTML, CSS, JS)
 app.use(express.static(path.join(__dirname)));
 
-// --- Estado Central del Juego ---
-const gameState = {
-    status: 'lobby',       // 'lobby', 'playing', 'ended'
-    players: {},           // socket.id -> { id, name, coins, cards: [], color, isHost }
-    calledNumbers: [],     // Bolillas que han salido
-    allNumbers: [],        // Pool de 1-75 mezclado
-    drawIndex: 0,          // Índice actual en allNumbers
-    winMode: 'line',       // 'line', 'two-lines', 'full'
-    pot: 0,                // Pozo acumulado
-    cardPrice: 10,
-    countdown: 120,        // Temporizador de 2 minutos (120 segundos)
-    timerInterval: null
-};
+// --- Estado Centralizado por Salas ---
+const rooms = {}; // roomId (4 dígitos) -> roomState
 
 // --- Constantes de Bingo ---
 const COLUMNS = ['B', 'I', 'N', 'G', 'O'];
@@ -88,114 +77,215 @@ function getLetterForNumber(num) {
     return 'O';
 }
 
-// --- Control del Temporizador del Lobby ---
-function startLobbyTimer() {
-    if (gameState.timerInterval) {
-        clearInterval(gameState.timerInterval);
-    }
-    gameState.status = 'lobby';
-    gameState.countdown = 120; // 2 minutos
-    gameState.calledNumbers = [];
-    gameState.drawIndex = 0;
-    gameState.allNumbers = generateShuffledPool();
+// --- Generador de Códigos de Sala Únicos (4 Dígitos Numéricos) ---
+function generateUniqueRoomId() {
+    const chars = '0123456789';
+    let code;
+    do {
+        code = '';
+        for (let i = 0; i < 4; i++) {
+            code += chars[Math.floor(Math.random() * chars.length)];
+        }
+    } while (rooms[code]);
+    return code;
+}
 
-    // Limpiar marcados de cartones de jugadores para la nueva ronda
-    Object.values(gameState.players).forEach(p => {
+// --- Creación de Sala ---
+function createRoomState(roomId) {
+    rooms[roomId] = {
+        id: roomId,
+        status: 'lobby',       // 'lobby', 'playing', 'ended'
+        players: {},           // socket.id -> { id, name, coins, cards: [], color, isHost }
+        calledNumbers: [],     // Bolillas cantadas
+        allNumbers: generateShuffledPool(), // Pool mezclado
+        drawIndex: 0,          // Índice actual en allNumbers
+        winMode: 'line',       // 'line', 'two-lines', 'full'
+        pot: 0,                // Pozo
+        cardPrice: 10,
+        countdown: 120,        // Temporizador de 2 minutos
+        timerInterval: null
+    };
+    return rooms[roomId];
+}
+
+// --- Control del Temporizador por Sala ---
+function startLobbyTimer(room) {
+    if (!room) return;
+    if (room.timerInterval) {
+        clearInterval(room.timerInterval);
+    }
+    room.status = 'lobby';
+    room.countdown = 120; // 2 minutos
+    room.calledNumbers = [];
+    room.drawIndex = 0;
+    room.allNumbers = generateShuffledPool();
+
+    // Limpiar marcados de cartones de jugadores
+    Object.values(room.players).forEach(p => {
         p.cards.forEach(c => {
             c.marked = Array(5).fill(null).map(() => Array(5).fill(false));
-            c.marked[2][2] = true; // El centro libre permanece libre
+            c.marked[2][2] = true;
         });
     });
 
-    io.emit('timer_update', { countdown: gameState.countdown, status: gameState.status });
-    broadcastState();
+    io.to(room.id).emit('timer_update', { countdown: room.countdown, status: room.status });
+    broadcastState(room);
 
-    gameState.timerInterval = setInterval(() => {
-        if (gameState.countdown > 0) {
-            gameState.countdown--;
-            io.emit('timer_update', { countdown: gameState.countdown, status: gameState.status });
+    room.timerInterval = setInterval(() => {
+        if (room.countdown > 0) {
+            room.countdown--;
+            io.to(room.id).emit('timer_update', { countdown: room.countdown, status: room.status });
         } else {
-            clearInterval(gameState.timerInterval);
-            gameState.timerInterval = null;
-            startGamePlay();
+            clearInterval(room.timerInterval);
+            room.timerInterval = null;
+            startGamePlay(room);
         }
     }, 1000);
 }
 
-function startGamePlay() {
-    gameState.status = 'playing';
-    io.emit('game_started', { pot: gameState.pot, winMode: gameState.winMode });
-    broadcastState();
+function startGamePlay(room) {
+    if (!room) return;
+    room.status = 'playing';
+    io.to(room.id).emit('game_started', { pot: room.pot, winMode: room.winMode });
+    broadcastState(room);
 }
 
-function broadcastState() {
-    io.emit('room_state', {
-        status: gameState.status,
-        players: Object.values(gameState.players),
-        pot: gameState.pot,
-        winMode: gameState.winMode,
-        calledNumbers: gameState.calledNumbers,
-        countdown: gameState.countdown
+function broadcastState(room) {
+    if (!room) return;
+    io.to(room.id).emit('room_state', {
+        roomId: room.id,
+        status: room.status,
+        players: Object.values(room.players),
+        pot: room.pot,
+        winMode: room.winMode,
+        calledNumbers: room.calledNumbers,
+        countdown: room.countdown
     });
 }
 
-// --- Conexiones de Sockets en Tiempo Real ---
-io.on('connection', (socket) => {
-    console.log(`Jugador conectado: ${socket.id}`);
+// --- Limpieza de Salas Vacías o sin Anfitrión ---
+function removeRoomIfEmpty(roomId) {
+    const room = rooms[roomId];
+    if (!room) return;
 
-    // Enviar estado actual del juego al conectarse
-    socket.emit('init_state', {
-        status: gameState.status,
-        pot: gameState.pot,
-        winMode: gameState.winMode,
-        calledNumbers: gameState.calledNumbers,
-        countdown: gameState.countdown
-    });
+    const activePlayers = Object.values(room.players);
+    const hasHost = activePlayers.some(p => p.isHost);
 
-    // Registrar Jugador o Anfitrión
-    socket.on('join_room', ({ name, color, isHost }) => {
-        if (isHost) {
-            gameState.players[socket.id] = {
-                id: 'host_' + socket.id.substr(0, 5),
-                name: name || 'Anfitrión',
-                coins: 0,
-                cards: [],
-                color: '#ef4444',
-                isHost: true
-            };
-            console.log(`Anfitrión registrado: ${name}`);
-        } else {
-            // Un jugador normal
-            gameState.players[socket.id] = {
-                id: 'p_' + socket.id.substr(0, 5),
-                name: name || `Jugador ${Object.keys(gameState.players).length + 1}`,
-                coins: 100, // Saldo inicial
-                cards: [],
-                color: color || '#8b5cf6',
-                isHost: false
-            };
-            console.log(`Jugador registrado: ${name} con saldo 100`);
-
-            // Iniciar temporizador automáticamente si entra el primer jugador y estamos en lobby
-            const activePlayers = Object.values(gameState.players).filter(p => !p.isHost);
-            if (activePlayers.length === 1 && gameState.status === 'lobby' && !gameState.timerInterval) {
-                startLobbyTimer();
-            }
+    if (activePlayers.length === 0 || !hasHost) {
+        console.log(`[Sala ${roomId}] Eliminando por inactividad o falta de anfitrión.`);
+        if (room.timerInterval) {
+            clearInterval(room.timerInterval);
         }
-        broadcastState();
+        delete rooms[roomId];
+    }
+}
+
+// --- Conexiones de Sockets en Tiempo Real (Salas) ---
+io.on('connection', (socket) => {
+    console.log(`Socket conectado: ${socket.id}`);
+
+    // CREAR SALA (Anfitrión)
+    socket.on('create_room', ({ name, color }) => {
+        const roomId = generateUniqueRoomId();
+        const room = createRoomState(roomId);
+
+        // Registrar anfitrión
+        const hostObj = {
+            id: 'host_' + socket.id.substr(0, 5),
+            name: name || 'Anfitrión',
+            coins: 0,
+            cards: [],
+            color: color || '#ef4444',
+            isHost: true
+        };
+        room.players[socket.id] = hostObj;
+        
+        // Asociar socket a la sala
+        socket.join(roomId);
+        socket.roomId = roomId;
+        socket.isHost = true;
+
+        console.log(`[Sala ${roomId}] Creada exitosamente por Anfitrión: ${hostObj.name}`);
+
+        // Responder con la inicialización
+        socket.emit('init_state', {
+            roomId: roomId,
+            status: room.status,
+            pot: room.pot,
+            winMode: room.winMode,
+            calledNumbers: room.calledNumbers,
+            countdown: room.countdown
+        });
+
+        broadcastState(room);
     });
 
-    // Compra de Cartón
+    // UNIRSE A SALA EXISTENTE (Jugador)
+    socket.on('join_room', ({ roomId, name, color }) => {
+        const cleanRoomId = String(roomId).trim();
+        const room = rooms[cleanRoomId];
+
+        if (!room) {
+            socket.emit('error_msg', `La sala con código "${cleanRoomId}" no existe. Revisa el código e intenta de nuevo.`);
+            return;
+        }
+
+        if (room.status !== 'lobby') {
+            socket.emit('error_msg', 'La partida en esta sala ya está en progreso o finalizada.');
+            return;
+        }
+
+        // Registrar jugador normal
+        const playerObj = {
+            id: 'p_' + socket.id.substr(0, 5),
+            name: name || `Jugador ${Object.keys(room.players).length + 1}`,
+            coins: 100, // Saldo inicial
+            cards: [],
+            color: color || '#8b5cf6',
+            isHost: false
+        };
+        room.players[socket.id] = playerObj;
+
+        // Asociar socket a la sala
+        socket.join(cleanRoomId);
+        socket.roomId = cleanRoomId;
+        socket.isHost = false;
+
+        console.log(`[Sala ${cleanRoomId}] Jugador unió: ${playerObj.name}`);
+
+        // Responder con la inicialización
+        socket.emit('init_state', {
+            roomId: cleanRoomId,
+            status: room.status,
+            pot: room.pot,
+            winMode: room.winMode,
+            calledNumbers: room.calledNumbers,
+            countdown: room.countdown
+        });
+
+        broadcastState(room);
+
+        // Iniciar temporizador si entra el primer jugador real en el lobby
+        const activePlayers = Object.values(room.players).filter(p => !p.isHost);
+        if (activePlayers.length === 1 && room.status === 'lobby' && !room.timerInterval) {
+            startLobbyTimer(room);
+        }
+    });
+
+    // COMPRA DE CARTÓN
     socket.on('buy_card', () => {
-        const player = gameState.players[socket.id];
+        const room = rooms[socket.roomId];
+        if (!room) return;
+
+        const player = room.players[socket.id];
         if (!player || player.isHost) return;
 
-        if (gameState.status !== 'lobby') {
+        if (room.status !== 'lobby') {
             socket.emit('error_msg', 'No puedes comprar cartones una vez que el juego ha comenzado.');
             return;
         }
 
-        if (player.coins < gameState.cardPrice) {
+        if (player.coins < room.cardPrice) {
             socket.emit('error_msg', 'Saldo insuficiente para comprar un cartón.');
             return;
         }
@@ -206,8 +296,8 @@ io.on('connection', (socket) => {
         }
 
         // Cobrar e incrementar pozo
-        player.coins -= gameState.cardPrice;
-        gameState.pot += gameState.cardPrice;
+        player.coins -= room.cardPrice;
+        room.pot += room.cardPrice;
 
         const newCard = {
             id: 'c_' + Math.random().toString(36).substr(2, 9),
@@ -217,16 +307,19 @@ io.on('connection', (socket) => {
         newCard.marked[2][2] = true; // Centro libre marcado
 
         player.cards.push(newCard);
-        broadcastState();
+        broadcastState(room);
         socket.emit('buy_success');
     });
 
-    // Devolución de Cartón (Reembolso)
+    // DEVOLUCIÓN DE CARTÓN (Reembolso)
     socket.on('return_card', ({ cardId }) => {
-        const player = gameState.players[socket.id];
+        const room = rooms[socket.roomId];
+        if (!room) return;
+
+        const player = room.players[socket.id];
         if (!player || player.isHost) return;
 
-        if (gameState.status !== 'lobby') {
+        if (room.status !== 'lobby') {
             socket.emit('error_msg', 'No puedes devolver cartones una vez que el juego ha comenzado.');
             return;
         }
@@ -236,46 +329,55 @@ io.on('connection', (socket) => {
 
         // Eliminar cartón y reembolsar
         player.cards.splice(cardIdx, 1);
-        player.coins += gameState.cardPrice;
-        gameState.pot = Math.max(0, gameState.pot - gameState.cardPrice);
+        player.coins += room.cardPrice;
+        room.pot = Math.max(0, room.pot - room.cardPrice);
 
-        broadcastState();
+        broadcastState(room);
         socket.emit('return_success');
     });
 
-    // Cambiar Patrón de Victoria (Línea, Dos Líneas, Cartón Lleno)
+    // CAMBIAR PATRÓN DE VICTORIA (Solo Anfitrión)
     socket.on('set_win_mode', ({ mode }) => {
-        const player = gameState.players[socket.id];
-        if (!player || !player.isHost) return; // Solo el Anfitrión puede cambiar el modo de victoria
+        const room = rooms[socket.roomId];
+        if (!room) return;
 
-        gameState.winMode = mode;
-        broadcastState();
+        const player = room.players[socket.id];
+        if (!player || !player.isHost) return;
+
+        room.winMode = mode;
+        broadcastState(room);
     });
 
-    // Sacar Bolilla (Tirada)
+    // SACAR BOLILLA (Solo Anfitrión)
     socket.on('draw_ball', () => {
-        const player = gameState.players[socket.id];
-        if (!player || !player.isHost) return; // Solo el Anfitrión saca bolillas
-        if (gameState.status !== 'playing') return;
+        const room = rooms[socket.roomId];
+        if (!room) return;
 
-        if (gameState.drawIndex >= gameState.allNumbers.length) {
-            io.emit('error_msg', '¡Se acabaron todas las bolillas del bolillero!');
+        const player = room.players[socket.id];
+        if (!player || !player.isHost) return;
+        if (room.status !== 'playing') return;
+
+        if (room.drawIndex >= room.allNumbers.length) {
+            io.to(room.id).emit('error_msg', '¡Se acabaron todas las bolillas del bolillero!');
             return;
         }
 
-        const num = gameState.allNumbers[gameState.drawIndex];
-        gameState.drawIndex++;
-        gameState.calledNumbers.push(num);
+        const num = room.allNumbers[room.drawIndex];
+        room.drawIndex++;
+        room.calledNumbers.push(num);
 
         const letter = getLetterForNumber(num);
 
-        io.emit('ball_drawn', { letter, number: num, calledNumbers: gameState.calledNumbers });
-        broadcastState();
+        io.to(room.id).emit('ball_drawn', { letter, number: num, calledNumbers: room.calledNumbers });
+        broadcastState(room);
     });
 
-    // Marcar Celda (por el Jugador en su pantalla)
+    // MARCAR CELDA (por el Jugador en su pantalla)
     socket.on('mark_cell', ({ cardId, row, col }) => {
-        const player = gameState.players[socket.id];
+        const room = rooms[socket.roomId];
+        if (!room) return;
+
+        const player = room.players[socket.id];
         if (!player || player.isHost) return;
 
         const card = player.cards.find(c => c.id === cardId);
@@ -283,19 +385,22 @@ io.on('connection', (socket) => {
 
         const num = card.matrix[row][col];
         // Validar si el número fue cantado
-        if (num !== 0 && !gameState.calledNumbers.includes(num)) {
+        if (num !== 0 && !room.calledNumbers.includes(num)) {
             socket.emit('error_msg', 'No puedes marcar un número que no ha sido cantado.');
             return;
         }
 
         card.marked[row][col] = true;
-        broadcastState();
+        broadcastState(room);
     });
 
-    // Reclamar Bingo (¡BINGO!)
+    // RECLAMAR BINGO (¡BINGO!)
     socket.on('claim_bingo', () => {
-        const player = gameState.players[socket.id];
-        if (!player || player.isHost || gameState.status !== 'playing') return;
+        const room = rooms[socket.roomId];
+        if (!room) return;
+
+        const player = room.players[socket.id];
+        if (!player || player.isHost || room.status !== 'playing') return;
 
         // Validar cartones del jugador
         let winningCard = null;
@@ -305,15 +410,15 @@ io.on('connection', (socket) => {
             let won = false;
             let cells = [];
 
-            if (gameState.winMode === 'line') {
+            if (room.winMode === 'line') {
                 const res = checkLines(c.marked, 1);
                 won = res.won;
                 cells = res.cells;
-            } else if (gameState.winMode === 'two-lines') {
+            } else if (room.winMode === 'two-lines') {
                 const res = checkLines(c.marked, 2);
                 won = res.won;
                 cells = res.cells;
-            } else if (gameState.winMode === 'full') {
+            } else if (room.winMode === 'full') {
                 const res = checkFullCard(c.marked);
                 won = res.won;
                 cells = res.cells;
@@ -327,18 +432,18 @@ io.on('connection', (socket) => {
 
         if (winningCard) {
             // El jugador es ganador oficial
-            gameState.status = 'ended';
-            if (gameState.timerInterval) {
-                clearInterval(gameState.timerInterval);
-                gameState.timerInterval = null;
+            room.status = 'ended';
+            if (room.timerInterval) {
+                clearInterval(room.timerInterval);
+                room.timerInterval = null;
             }
 
             // Entregar el pozo
-            const prize = gameState.pot;
+            const prize = room.pot;
             player.coins += prize;
-            gameState.pot = 0;
+            room.pot = 0;
 
-            io.emit('game_over', {
+            io.to(room.id).emit('game_over', {
                 winnerName: player.name,
                 winnerId: player.id,
                 cardIndex: winningCard.index,
@@ -346,71 +451,86 @@ io.on('connection', (socket) => {
                 prize: prize,
                 winningCells: winningCells
             });
-            broadcastState();
+            broadcastState(room);
         } else {
-            // Falsa alarma, penalizar o avisar
             socket.emit('error_msg', '¡Tu cartón aún no califica para Bingo! Revisa bien tus celdas.');
         }
     });
 
-    // Reiniciar Juego (Lobby Nuevo)
+    // REINICIAR JUEGO (Solo Anfitrión)
     socket.on('restart_game', () => {
-        const player = gameState.players[socket.id];
-        if (!player || !player.isHost) return; // Solo el Anfitrión puede reiniciar
+        const room = rooms[socket.roomId];
+        if (!room) return;
 
-        startLobbyTimer();
+        const player = room.players[socket.id];
+        if (!player || !player.isHost) return;
+
+        startLobbyTimer(room);
     });
 
-    // Iniciar Partida Inmediatamente (por el Anfitrión)
+    // INICIAR PARTIDA ANTICIPADAMENTE (Solo Anfitrión)
     socket.on('start_game_early', () => {
-        const player = gameState.players[socket.id];
-        if (!player || !player.isHost) return; // Solo el Anfitrión puede iniciar
-        
-        if (gameState.status === 'lobby') {
-            console.log("Anfitrión ha iniciado la partida antes de tiempo.");
-            if (gameState.timerInterval) {
-                clearInterval(gameState.timerInterval);
-                gameState.timerInterval = null;
+        const room = rooms[socket.roomId];
+        if (!room) return;
+
+        const player = room.players[socket.id];
+        if (!player || !player.isHost) return;
+
+        if (room.status === 'lobby') {
+            console.log(`[Sala ${room.id}] Anfitrión inició la partida antes de tiempo.`);
+            if (room.timerInterval) {
+                clearInterval(room.timerInterval);
+                room.timerInterval = null;
             }
-            startGamePlay();
+            startGamePlay(room);
         }
     });
 
-    // Recargar Monedas (Banca/Administrador)
+    // RECARGAR MONEDAS (Solo Anfitrión)
     socket.on('recharge_coins', ({ targetPlayerId, amount }) => {
-        const player = gameState.players[socket.id];
-        if (!player || !player.isHost) return; // Solo el anfitrión/banca recarga
+        const room = rooms[socket.roomId];
+        if (!room) return;
 
-        const targetPlayer = Object.values(gameState.players).find(p => p.id === targetPlayerId);
+        const player = room.players[socket.id];
+        if (!player || !player.isHost) return;
+
+        const targetPlayer = Object.values(room.players).find(p => p.id === targetPlayerId);
         if (targetPlayer) {
             targetPlayer.coins += amount;
-            broadcastState();
-            io.emit('notification', `${targetPlayer.name} recibió una recarga de 🪙 ${amount} monedas.`);
+            broadcastState(room);
+            io.to(room.id).emit('notification', `${targetPlayer.name} recibió una recarga de 🪙 ${amount} monedas.`);
         }
     });
 
-    // Desconexión
+    // DESCONEXIÓN
     socket.on('disconnect', () => {
-        console.log(`Jugador desconectado: ${socket.id}`);
-        const p = gameState.players[socket.id];
-        if (p) {
-            // Reembolsar pozo por sus cartones si sale durante el lobby
-            if (gameState.status === 'lobby' && !p.isHost) {
-                const refund = p.cards.length * gameState.cardPrice;
-                gameState.pot = Math.max(0, gameState.pot - refund);
-            }
-            delete gameState.players[socket.id];
+        console.log(`Socket desconectado: ${socket.id}`);
+        const roomId = socket.roomId;
+        if (roomId && rooms[roomId]) {
+            const room = rooms[roomId];
+            const p = room.players[socket.id];
+            
+            if (p) {
+                // Reembolsar pozo por sus cartones si sale en lobby
+                if (room.status === 'lobby' && !p.isHost) {
+                    const refund = p.cards.length * room.cardPrice;
+                    room.pot = Math.max(0, room.pot - refund);
+                }
+                
+                delete room.players[socket.id];
 
-            // Si no quedan jugadores reales y el temporizador corre, pararlo
-            const activePlayers = Object.values(gameState.players).filter(pl => !pl.isHost);
-            if (activePlayers.length === 0 && gameState.timerInterval) {
-                clearInterval(gameState.timerInterval);
-                gameState.timerInterval = null;
-                gameState.status = 'lobby';
-                gameState.countdown = 120;
-            }
+                // Si no quedan jugadores y el temporizador corre, pararlo
+                const activePlayers = Object.values(room.players).filter(pl => !pl.isHost);
+                if (activePlayers.length === 0 && room.timerInterval) {
+                    clearInterval(room.timerInterval);
+                    room.timerInterval = null;
+                    room.status = 'lobby';
+                    room.countdown = 120;
+                }
 
-            broadcastState();
+                broadcastState(room);
+                removeRoomIfEmpty(roomId);
+            }
         }
     });
 });
@@ -475,10 +595,7 @@ function checkFullCard(markedMatrix) {
 // Iniciar el Servidor HTTP
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`===================================================`);
-    console.log(`🔥 BINGO MULTIJUGADOR REAL INICIADO 🔥`);
+    console.log(`🔥 BINGO MULTIJUGADOR REAL - CON SALAS INICIADO 🔥`);
     console.log(`💻 Localmente:   http://localhost:${PORT}`);
-    console.log(`📱 En tu red Wi-Fi desde tu móvil:`);
-    console.log(`   Paso 1: Busca tu IP de PC (ej. en cmd ejecuta: ipconfig)`);
-    console.log(`   Paso 2: En tu celular entra a: http://<TU_IP_DE_PC>:${PORT}`);
     console.log(`===================================================`);
 });

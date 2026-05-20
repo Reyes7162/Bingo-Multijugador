@@ -5,7 +5,8 @@
 // --- Estado Global ---
 let socket = null;
 const state = {
-    gameMode: 'shared',    // 'shared' (Pantalla Compartida), 'host' (Solo Bolillero), 'player' (Solo Cartón)
+    gameMode: 'host',      // 'host' (Solo Bolillero), 'player' (Solo Cartón)
+    roomId: null,          // Código de sala asignado/ingresado
     players: [],           // [{ id, name, coins, cards: [{ id, matrix, marked }], color }]
     calledNumbers: [],     // Números que han salido
     allNumbers: [],        // Pool de 1-75 mezclado
@@ -232,45 +233,32 @@ function speakWinner(name) {
 function selectGameMode(mode) {
     state.gameMode = mode;
     
-    if (mode === 'shared') {
-        // Modo local tradicional, inicia de una vez
-        document.getElementById('lobby-screen').classList.add('hidden');
-        document.getElementById('game-interface').classList.remove('hidden');
-        
-        const container = document.getElementById('game-container');
-        container.className = 'layout-three-columns';
-        document.getElementById('mode-indicator').textContent = '📺 Pantalla Compartida';
-        
-        state.players = [
-            { id: generateId(), name: 'Jugador 1', coins: 100, cards: [], color: '#8b5cf6' },
-            { id: generateId(), name: 'Jugador 2', coins: 100, cards: [], color: '#3b82f6' }
-        ];
-        startNewRound();
+    // Modos en red, mostrar pantalla de configuración
+    document.getElementById('lobby-modes-main').classList.add('hidden');
+    const setupBox = document.getElementById('connection-setup');
+    setupBox.classList.remove('hidden');
+    
+    const urlInput = document.getElementById('server-url-input');
+    if (window.location.origin && !window.location.origin.startsWith('file')) {
+        urlInput.value = window.location.origin;
     } else {
-        // Modos en red, mostrar pantalla de configuración
-        document.getElementById('lobby-modes-main').classList.add('hidden');
-        const setupBox = document.getElementById('connection-setup');
-        setupBox.classList.remove('hidden');
-        
-        const urlInput = document.getElementById('server-url-input');
-        if (window.location.origin && !window.location.origin.startsWith('file')) {
-            urlInput.value = window.location.origin;
-        } else {
-            urlInput.value = '';
-            urlInput.placeholder = 'Ej. http://192.168.1.15:3000';
-        }
-        
-        if (mode === 'host') {
-            document.getElementById('setup-title').textContent = '📢 Configurar Anfitrión';
-            document.getElementById('setup-name-group').classList.add('hidden');
-            document.getElementById('setup-color-picker').classList.add('hidden');
-            document.getElementById('setup-connect-btn-text').textContent = '¡Iniciar Sala en Vivo! 📢';
-        } else {
-            document.getElementById('setup-title').textContent = '🎟️ Configurar Jugador';
-            document.getElementById('setup-name-group').classList.remove('hidden');
-            document.getElementById('setup-color-picker').classList.remove('hidden');
-            document.getElementById('setup-connect-btn-text').textContent = '¡Unirse al Bingo en Vivo! 🎟️';
-        }
+        urlInput.value = '';
+        urlInput.placeholder = 'Ej. http://192.168.1.15:3000';
+    }
+    
+    const codeGroup = document.getElementById('setup-room-code-group');
+    if (mode === 'host') {
+        document.getElementById('setup-title').textContent = '📢 Configurar Anfitrión';
+        document.getElementById('setup-name-group').classList.add('hidden');
+        document.getElementById('setup-color-picker').classList.add('hidden');
+        if (codeGroup) codeGroup.classList.add('hidden');
+        document.getElementById('setup-connect-btn-text').textContent = '🚀 Crear Sala en Vivo';
+    } else {
+        document.getElementById('setup-title').textContent = '🎟️ Configurar Jugador';
+        document.getElementById('setup-name-group').classList.remove('hidden');
+        document.getElementById('setup-color-picker').classList.remove('hidden');
+        if (codeGroup) codeGroup.classList.remove('hidden');
+        document.getElementById('setup-connect-btn-text').textContent = '🔌 Unirse a la Sala';
     }
 }
 
@@ -284,8 +272,32 @@ function backToLobby() {
     if (typeof speechSynthesis !== 'undefined') {
         speechSynthesis.cancel();
     }
+    // Desconectar socket si existe
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+    state.roomId = null;
+    document.getElementById('room-badge-container').classList.add('hidden');
     document.getElementById('game-interface').classList.add('hidden');
     document.getElementById('lobby-screen').classList.remove('hidden');
+    document.getElementById('lobby-modes-main').classList.remove('hidden');
+    document.getElementById('connection-setup').classList.add('hidden');
+}
+
+function copyRoomCode() {
+    if (!state.roomId) return;
+    const shareText = `¡Únete a mi partida de Bingo Real Multijugador!\nCódigo de Sala: ${state.roomId}\nEnlace: ${window.location.origin}`;
+    navigator.clipboard.writeText(shareText).then(() => {
+        alert(`¡Código de Sala ${state.roomId} y enlace de invitación copiados al portapapeles!`);
+    }).catch(err => {
+        console.error("Error al copiar:", err);
+        // Fallback
+        navigator.clipboard.writeText(state.roomId).then(() => {
+            alert(`Código de Sala ${state.roomId} copiado al portapapeles!`);
+        });
+    });
+}
 }
 
 function generateId() {
@@ -1227,6 +1239,16 @@ function connectToServer() {
         return;
     }
 
+    let codeVal = '';
+    if (state.gameMode === 'player') {
+        codeVal = document.getElementById('room-code-input').value.trim().toUpperCase();
+        if (!codeVal || codeVal.length !== 4) {
+            playErrorSound();
+            alert("Por favor, ingresa el código de 4 dígitos de la sala para unirte.");
+            return;
+        }
+    }
+
     let serverUrl = document.getElementById('server-url-input').value.trim();
     if (!serverUrl) {
         if (window.location.origin && !window.location.origin.startsWith('file')) {
@@ -1239,8 +1261,6 @@ function connectToServer() {
     }
 
     console.log(`Conectando al servidor: ${serverUrl}`);
-    
-    // Desactivar autoplay local si estuviera corriendo
     clearAutoPlay();
 
     socket = io(serverUrl, {
@@ -1254,6 +1274,39 @@ function connectToServer() {
     socket.on('connect', () => {
         console.log(`Conexión exitosa con Socket ID: ${socket.id}`);
         
+        const nameVal = document.getElementById('player-name-input').value.trim();
+
+        // Registrarse oficialmente (Crear o Unirse)
+        if (state.gameMode === 'host') {
+            socket.emit('create_room', {
+                name: nameVal || 'Anfitrión',
+                color: '#ef4444'
+            });
+        } else {
+            socket.emit('join_room', {
+                roomId: codeVal,
+                name: nameVal || 'Jugador',
+                color: state.selectedColor
+            });
+        }
+
+        setupSocketEvents();
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error("Error de conexión al servidor:", error);
+        playErrorSound();
+        alert("No se pudo establecer conexión con el servidor de Bingo.\nVerifica que la dirección del servidor sea correcta y que esté en funcionamiento.");
+        backToLobby();
+    });
+}
+
+function setupSocketEvents() {
+    // Inicialización y sincronización de estado de la sala
+    socket.on('init_state', (data) => {
+        // Guardar RoomId
+        state.roomId = data.roomId;
+
         // Ocultar pantalla de lobby principal y mostrar interfaz
         document.getElementById('lobby-screen').classList.add('hidden');
         document.getElementById('game-interface').classList.remove('hidden');
@@ -1281,29 +1334,14 @@ function connectToServer() {
             document.getElementById('auto-btn').disabled = true;
         }
 
-        // Registrarse oficialmente en la sala de red
-        const nameVal = document.getElementById('player-name-input').value.trim();
-        socket.emit('join_room', {
-            name: nameVal,
-            color: state.selectedColor,
-            isHost: (state.gameMode === 'host')
-        });
+        // Mostrar Badge del Código de la Sala en el header
+        const badgeContainer = document.getElementById('room-badge-container');
+        const badgeDisplay = document.getElementById('room-id-display');
+        if (badgeContainer && badgeDisplay) {
+            badgeContainer.classList.remove('hidden');
+            badgeDisplay.textContent = state.roomId;
+        }
 
-        // Configurar los manejadores de eventos recibidos de red
-        setupSocketEvents();
-    });
-
-    socket.on('connect_error', (error) => {
-        console.error("Error de conexión al servidor:", error);
-        playErrorSound();
-        alert("No se pudo establecer conexión con el servidor de Bingo.\nVerifica que la dirección del servidor sea correcta y que esté en funcionamiento.");
-        backToLobby();
-    });
-}
-
-function setupSocketEvents() {
-    // Inicialización y sincronización de estado de la sala
-    socket.on('init_state', (data) => {
         syncState(data);
     });
 
@@ -1468,6 +1506,12 @@ function syncState(data) {
     state.calledNumbers = data.calledNumbers;
     state.players = data.players;
     state.countdown = data.countdown;
+    state.roomId = data.roomId;
+
+    if (state.roomId) {
+        const badge = document.getElementById('room-id-display');
+        if (badge) badge.textContent = state.roomId;
+    }
 
     // Actualizar pozo y datos
     document.getElementById('pot-amount').textContent = state.pot;
