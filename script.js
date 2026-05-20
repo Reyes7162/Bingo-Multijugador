@@ -298,7 +298,6 @@ function copyRoomCode() {
         });
     });
 }
-}
 
 function generateId() {
     return 'p_' + Math.random().toString(36).substr(2, 9);
