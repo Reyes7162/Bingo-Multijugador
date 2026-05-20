@@ -227,6 +227,499 @@ function speakWinner(name) {
     setTimeout(() => { speechSynthesis.speak(utterance); }, 800);
 }
 
+// --- Inicialización del Lobby Premium ---
+function initLobbyPremium() {
+    const savedName = localStorage.getItem('bingo_user_name') || 'Tu Nombre';
+    const savedCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+    const savedGems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10);
+
+    const displayNameEl = document.getElementById('lobby-display-name');
+    const nameInputEl = document.getElementById('player-name-input');
+    const coinsDisplayEl = document.getElementById('lobby-coins-display');
+    const gemsDisplayEl = document.getElementById('lobby-gems-display');
+
+    if (displayNameEl) displayNameEl.textContent = savedName;
+    if (nameInputEl) nameInputEl.value = (savedName === 'Tu Nombre' ? '' : savedName);
+    if (coinsDisplayEl) coinsDisplayEl.textContent = savedCoins.toLocaleString();
+    if (gemsDisplayEl) gemsDisplayEl.textContent = savedGems.toLocaleString();
+}
+
+// Escuchar DOMContentLoaded para cargar valores iniciales del Lobby
+window.addEventListener('DOMContentLoaded', initLobbyPremium);
+
+function editProfileName() {
+    playBallDrawSound();
+    const currentName = localStorage.getItem('bingo_user_name') || 'Tu Nombre';
+    const newName = prompt('Introduce tu apodo / nombre de jugador:', currentName);
+    if (newName !== null) {
+        const cleanedName = newName.trim().substring(0, 12);
+        if (cleanedName) {
+            localStorage.setItem('bingo_user_name', cleanedName);
+            const displayNameEl = document.getElementById('lobby-display-name');
+            const nameInputEl = document.getElementById('player-name-input');
+            if (displayNameEl) displayNameEl.textContent = cleanedName;
+            if (nameInputEl) nameInputEl.value = cleanedName;
+            playCoinSound();
+            showLobbyToast('info', '👤 Perfil Actualizado', `Tu apodo ahora es "${cleanedName}"`);
+        }
+    }
+}
+
+function addCoinsDemo() {
+    playCoinSound();
+    let currentCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+    currentCoins += 1000;
+    localStorage.setItem('bingo_coins', currentCoins.toString());
+    const coinsDisplayEl = document.getElementById('lobby-coins-display');
+    if (coinsDisplayEl) coinsDisplayEl.textContent = currentCoins.toLocaleString();
+    showLobbyToast('coins', '🪙 Monedas Añadidas', '+1,000 monedas demo.');
+}
+
+function addGemsDemo() {
+    playCoinSound();
+    let currentGems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10);
+    currentGems += 100;
+    localStorage.setItem('bingo_gems', currentGems.toString());
+    const gemsDisplayEl = document.getElementById('lobby-gems-display');
+    if (gemsDisplayEl) gemsDisplayEl.textContent = currentGems.toLocaleString();
+    showLobbyToast('gems', '💎 Gemas Añadidas', '+100 gemas demo.');
+}
+
+function showLobbyToast(type, title, desc) {
+    const container = document.getElementById('lobby-toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `lobby-toast ${type}`;
+
+    let icon = '📢';
+    if (type === 'coins') icon = '🪙';
+    else if (type === 'gems') icon = '💎';
+    else if (type === 'info') icon = '💡';
+
+    toast.innerHTML = `
+        <span class="lobby-toast-icon">${icon}</span>
+        <div class="lobby-toast-content">
+            <h4 class="lobby-toast-title" style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #ffffff;">${title}</h4>
+            <p class="lobby-toast-desc" style="margin: 2px 0 0 0; font-size: 0.72rem; color: #cbd5e1; font-weight: 600;">${desc}</p>
+        </div>
+    `;
+
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+function showLobbyMessage(title, text) {
+    playBallDrawSound();
+    const modal = document.getElementById('lobby-message-modal');
+    if (modal) {
+        const titleEl = document.getElementById('message-modal-title');
+        const textEl = document.getElementById('message-modal-text');
+        if (titleEl) titleEl.textContent = title;
+        if (textEl) textEl.textContent = text;
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeLobbyModal(modalId) {
+    playBallDrawSound();
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function toggleSettings() {
+    playBallDrawSound();
+    const modal = document.getElementById('lobby-settings-modal');
+    if (modal) {
+        const soundToggle = document.getElementById('lobby-sound-toggle');
+        const voiceToggle = document.getElementById('lobby-voice-toggle');
+        if (soundToggle) soundToggle.checked = state.soundEnabled;
+        if (voiceToggle) voiceToggle.checked = state.voiceEnabled;
+        modal.classList.remove('hidden');
+    }
+}
+
+function changeVoiceLanguage(langCode) {
+    if (typeof speechSynthesis === 'undefined') return;
+    playBallDrawSound();
+    const voices = speechSynthesis.getVoices();
+    const matchedVoice = voices.find(v => v.lang.toLowerCase() === langCode.toLowerCase() || v.lang.toLowerCase().startsWith(langCode.substring(0, 2).toLowerCase()));
+    if (matchedVoice) {
+        spanishVoice = matchedVoice;
+        showLobbyToast('info', '🌐 Idioma Cambiado', 'Voz configurada a: ' + matchedVoice.name);
+    }
+}
+
+// --- Ruleta de la Suerte (Canvas Spinning Wheel) ---
+let isWheelSpinning = false;
+let currentWheelAngle = 0;
+const wheelPrizes = [
+    { type: 'coins', amount: 500, label: '500 🪙' },
+    { type: 'gems', amount: 50, label: '50 💎' },
+    { type: 'coins', amount: 2000, label: '2,000 🪙' },
+    { type: 'gems', amount: 100, label: '100 💎' },
+    { type: 'coins', amount: 1000, label: '1,000 🪙' },
+    { type: 'gems', amount: 250, label: '250 💎' },
+    { type: 'coins', amount: 10000, label: '10,000 🪙' },
+    { type: 'gems', amount: 500, label: '500 💎' }
+];
+
+function spinLuckyWheel() {
+    playBallDrawSound();
+    const modal = document.getElementById('lucky-wheel-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            drawWheel(currentWheelAngle);
+        }, 50);
+    }
+}
+
+function drawWheel(angle) {
+    const canvas = document.getElementById('lucky-wheel-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r = canvas.width / 2 - 8;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const numSlices = wheelPrizes.length;
+    const sliceAngle = (Math.PI * 2) / numSlices;
+
+    for (let i = 0; i < numSlices; i++) {
+        const startAngle = i * sliceAngle + angle;
+        const endAngle = (i + 1) * sliceAngle + angle;
+
+        const gradient = ctx.createRadialGradient(cx, cy, 10, cx, cy, r);
+        if (i % 2 === 0) {
+            gradient.addColorStop(0, '#1d4ed8');
+            gradient.addColorStop(1, '#1e3a8a');
+        } else {
+            gradient.addColorStop(0, '#db2777');
+            gradient.addColorStop(1, '#831843');
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 11px Outfit, sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(wheelPrizes[i].label, r - 15, 0);
+        ctx.restore();
+    }
+
+    const innerGlow = ctx.createRadialGradient(cx, cy, 2, cx, cy, 18);
+    innerGlow.addColorStop(0, '#fbbf24');
+    innerGlow.addColorStop(0.7, '#d97706');
+    innerGlow.addColorStop(1, '#78350f');
+    ctx.fillStyle = innerGlow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⭐', cx, cy);
+}
+
+function spinWheelAction() {
+    if (isWheelSpinning) return;
+    isWheelSpinning = true;
+    
+    const spinBtn = document.getElementById('spin-wheel-btn');
+    if (spinBtn) spinBtn.disabled = true;
+
+    playBallDrawSound();
+
+    const rotations = 6 + Math.floor(Math.random() * 4);
+    const winningIndex = Math.floor(Math.random() * wheelPrizes.length);
+    const sliceAngle = (Math.PI * 2) / wheelPrizes.length;
+    
+    const targetAngle = -Math.PI / 2 - (winningIndex * sliceAngle + sliceAngle / 2);
+    const totalRotation = rotations * Math.PI * 2 + targetAngle - currentWheelAngle;
+    
+    const startAngle = currentWheelAngle;
+    const duration = 4000;
+    const startTime = performance.now();
+
+    function animateSpin(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        const easeOut = 1 - Math.pow(1 - progress, 3.5);
+        currentWheelAngle = startAngle + totalRotation * easeOut;
+        
+        drawWheel(currentWheelAngle);
+
+        if (elapsed % 180 < 20) {
+            playTickSound();
+        }
+
+        if (progress < 1) {
+            requestAnimationFrame(animateSpin);
+        } else {
+            isWheelSpinning = false;
+            if (spinBtn) spinBtn.disabled = false;
+            claimWheelPrize(wheelPrizes[winningIndex]);
+        }
+    }
+
+    requestAnimationFrame(animateSpin);
+}
+
+function playTickSound() {
+    if (!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(600, now);
+    gain.gain.setValueAtTime(0.015, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    osc.start(now);
+    osc.stop(now + 0.05);
+}
+
+function claimWheelPrize(prize) {
+    playWinSound();
+    launchConfetti();
+
+    if (prize.type === 'coins') {
+        let currentCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+        currentCoins += prize.amount;
+        localStorage.setItem('bingo_coins', currentCoins.toString());
+        const display = document.getElementById('lobby-coins-display');
+        if (display) display.textContent = currentCoins.toLocaleString();
+        showLobbyToast('coins', '🎉 ¡FELICIDADES!', `Ganaste ${prize.amount.toLocaleString()} Monedas!`);
+    } else {
+        let currentGems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10);
+        currentGems += prize.amount;
+        localStorage.setItem('bingo_gems', currentGems.toString());
+        const display = document.getElementById('lobby-gems-display');
+        if (display) display.textContent = currentGems.toLocaleString();
+        showLobbyToast('gems', '🎉 ¡FELICIDADES!', `Ganaste ${prize.amount.toLocaleString()} Gemas!`);
+    }
+}
+
+// --- Slots de la Suerte (Lucky 7 Slots Machine) ---
+let isSlotsSpinning = false;
+const slotSymbols = ['🍒', '🍋', '🍊', '🍇', '💎', '🔔', '7️⃣'];
+
+function playSlotsDemo() {
+    playBallDrawSound();
+    const modal = document.getElementById('slots-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function spinSlotsAction() {
+    if (isSlotsSpinning) return;
+
+    let currentCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10);
+    if (currentCoins < 100) {
+        playErrorSound();
+        showLobbyToast('info', '🪙 Monedas Insuficientes', 'Necesitas 100 🪙 para jugar. ¡Añade más gratis!');
+        return;
+    }
+
+    currentCoins -= 100;
+    localStorage.setItem('bingo_coins', currentCoins.toString());
+    const display = document.getElementById('lobby-coins-display');
+    if (display) display.textContent = currentCoins.toLocaleString();
+    playCoinSound();
+
+    isSlotsSpinning = true;
+    const spinBtn = document.getElementById('spin-slots-btn');
+    if (spinBtn) {
+        spinBtn.disabled = true;
+        spinBtn.querySelector('span').textContent = 'Girando...';
+    }
+
+    const reel1 = document.getElementById('strip-1');
+    const reel2 = document.getElementById('strip-2');
+    const reel3 = document.getElementById('strip-3');
+
+    const result = [
+        slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
+        slotSymbols[Math.floor(Math.random() * slotSymbols.length)],
+        slotSymbols[Math.floor(Math.random() * slotSymbols.length)]
+    ];
+
+    let count = 0;
+    const maxTicks = 25;
+    const interval = setInterval(() => {
+        count++;
+        if (count < 15) {
+            if (reel1) reel1.querySelector('.slot-symbol').textContent = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+        } else if (count === 15) {
+            if (reel1) reel1.querySelector('.slot-symbol').textContent = result[0];
+            playTickSound();
+        }
+
+        if (count < 20) {
+            if (reel2) reel2.querySelector('.slot-symbol').textContent = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+        } else if (count === 20) {
+            if (reel2) reel2.querySelector('.slot-symbol').textContent = result[1];
+            playTickSound();
+        }
+
+        if (count < maxTicks) {
+            if (reel3) reel3.querySelector('.slot-symbol').textContent = slotSymbols[Math.floor(Math.random() * slotSymbols.length)];
+        } else if (count === maxTicks) {
+            if (reel3) reel3.querySelector('.slot-symbol').textContent = result[2];
+            playTickSound();
+            clearInterval(interval);
+            
+            isSlotsSpinning = false;
+            if (spinBtn) {
+                spinBtn.disabled = false;
+                spinBtn.querySelector('span').textContent = 'Jugar (100 🪙)';
+            }
+            evaluateSlotsResult(result);
+        }
+    }, 80);
+}
+
+function evaluateSlotsResult(result) {
+    const [s1, s2, s3] = result;
+
+    if (s1 === '7️⃣' && s2 === '7️⃣' && s3 === '7️⃣') {
+        playWinSound();
+        launchConfetti();
+        let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 10000;
+        let gems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10) + 500;
+        localStorage.setItem('bingo_coins', coins.toString());
+        localStorage.setItem('bingo_gems', gems.toString());
+        document.getElementById('lobby-coins-display').textContent = coins.toLocaleString();
+        document.getElementById('lobby-gems-display').textContent = gems.toLocaleString();
+        showLobbyToast('coins', '🎉 777 JACKPOT!', '+10,000 🪙 y +500 💎 en los slots!');
+    } else if (s1 === '💎' && s2 === '💎' && s3 === '💎') {
+        playWinSound();
+        launchConfetti();
+        let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 5000;
+        let gems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10) + 250;
+        localStorage.setItem('bingo_coins', coins.toString());
+        localStorage.setItem('bingo_gems', gems.toString());
+        document.getElementById('lobby-coins-display').textContent = coins.toLocaleString();
+        document.getElementById('lobby-gems-display').textContent = gems.toLocaleString();
+        showLobbyToast('gems', '🎉 DIAMOND MATCH!', '+5,000 🪙 y +250 💎 en los slots!');
+    } else if (s1 === s2 && s2 === s3) {
+        playWinSound();
+        launchConfetti();
+        let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 1000;
+        localStorage.setItem('bingo_coins', coins.toString());
+        document.getElementById('lobby-coins-display').textContent = coins.toLocaleString();
+        showLobbyToast('coins', '🎉 TRIPLE MATCH!', `¡3x ${s1}! Ganaste +1,000 Monedas!`);
+    } else if (s1 === s2 || s2 === s3 || s1 === s3) {
+        playCoinSound();
+        let coins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 100;
+        localStorage.setItem('bingo_coins', coins.toString());
+        document.getElementById('lobby-coins-display').textContent = coins.toLocaleString();
+        showLobbyToast('coins', '✨ PAR MATCH!', `¡2x iguales! Ganaste +100 Monedas!`);
+    } else {
+        playErrorSound();
+        showLobbyToast('info', '😢 Sigue Intentando', 'Sin combinaciones. ¡Prueba otra vez!');
+    }
+}
+
+// --- Regalo Diario (Daily Chest Box) ---
+function claimDailyGift() {
+    playBallDrawSound();
+    const modal = document.getElementById('daily-gift-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+
+    const lastClaim = localStorage.getItem('bingo_last_gift_claim');
+    const now = Date.now();
+    const nextClaimAvailable = lastClaim ? parseInt(lastClaim, 10) + (24 * 60 * 60 * 1000) : 0;
+
+    const giftVisual = document.getElementById('gift-box-visual');
+    const promptText = document.getElementById('gift-prompt-text');
+    const actionsPanel = document.getElementById('gift-actions-panel');
+
+    if (giftVisual) {
+        giftVisual.classList.remove('opened-gift');
+        giftVisual.style.pointerEvents = 'auto';
+    }
+    if (actionsPanel) actionsPanel.classList.add('hidden');
+
+    if (now < nextClaimAvailable) {
+        const diff = nextClaimAvailable - now;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (giftVisual) {
+            giftVisual.classList.add('opened-gift');
+            giftVisual.style.pointerEvents = 'none';
+        }
+        if (promptText) promptText.textContent = `Regalo ya reclamado. Vuelve en ${hours}h ${minutes}m.`;
+        if (actionsPanel) actionsPanel.classList.remove('hidden');
+    } else {
+        if (promptText) promptText.textContent = '¡Toca el regalo para abrirlo!';
+        if (giftVisual) {
+            giftVisual.classList.add('shake-gift');
+        }
+    }
+}
+
+function claimDailyGiftAction() {
+    const giftVisual = document.getElementById('gift-box-visual');
+    if (!giftVisual || giftVisual.classList.contains('opened-gift')) return;
+
+    giftVisual.classList.remove('shake-gift');
+    giftVisual.classList.add('opened-gift');
+    giftVisual.style.pointerEvents = 'none';
+
+    playWinSound();
+    launchConfetti();
+
+    localStorage.setItem('bingo_last_gift_claim', Date.now().toString());
+
+    let currentCoins = parseInt(localStorage.getItem('bingo_coins') || '309765', 10) + 2500;
+    let currentGems = parseInt(localStorage.getItem('bingo_gems') || '8124', 10) + 150;
+    localStorage.setItem('bingo_coins', currentCoins.toString());
+    localStorage.setItem('bingo_gems', currentGems.toString());
+
+    document.getElementById('lobby-coins-display').textContent = currentCoins.toLocaleString();
+    document.getElementById('lobby-gems-display').textContent = currentGems.toLocaleString();
+
+    document.getElementById('gift-prompt-text').innerHTML = `🎉 ¡Recompensas Reclamadas!<br><strong>+2,500 🪙 Monedas</strong><br><strong>+150 💎 Gemas</strong>`;
+    
+    document.getElementById('gift-actions-panel').classList.remove('hidden');
+    showLobbyToast('info', '🎁 Regalo Diario Reclamado', '¡Monedas y Gemas añadidas a tu inventario!');
+}
+
 // =============================================
 // GESTIÓN DEL LOBBY Y MODOS DE JUEGO
 // =============================================
@@ -1180,39 +1673,67 @@ function closeModal() {
 
 // --- Toggles de configuración ---
 function toggleSound() {
-    state.soundEnabled = !state.soundEnabled;
+    const lobbyToggle = document.getElementById('lobby-sound-toggle');
+    if (lobbyToggle) {
+        state.soundEnabled = lobbyToggle.checked;
+    } else {
+        state.soundEnabled = !state.soundEnabled;
+    }
+    
     const btn = document.getElementById('sound-toggle');
     const icon = document.getElementById('sound-icon');
     const label = document.getElementById('sound-label');
 
+    if (btn && icon && label) {
+        if (state.soundEnabled) {
+            btn.classList.add('active');
+            icon.textContent = '🔊';
+            label.textContent = 'Sonido';
+        } else {
+            btn.classList.remove('active');
+            icon.textContent = '🔇';
+            label.textContent = 'Silencio';
+        }
+    }
+
+    if (lobbyToggle) {
+        lobbyToggle.checked = state.soundEnabled;
+    }
+
     if (state.soundEnabled) {
-        btn.classList.add('active');
-        icon.textContent = '🔊';
-        label.textContent = 'Sonido';
-    } else {
-        btn.classList.remove('active');
-        icon.textContent = '🔇';
-        label.textContent = 'Silencio';
+        playBallDrawSound();
     }
 }
 
 function toggleVoice() {
-    state.voiceEnabled = !state.voiceEnabled;
+    const lobbyToggle = document.getElementById('lobby-voice-toggle');
+    if (lobbyToggle) {
+        state.voiceEnabled = lobbyToggle.checked;
+    } else {
+        state.voiceEnabled = !state.voiceEnabled;
+    }
+    
     const btn = document.getElementById('voice-toggle');
     const icon = document.getElementById('voice-icon');
     const label = document.getElementById('voice-label');
 
-    if (state.voiceEnabled) {
-        btn.classList.add('active');
-        icon.textContent = '🗣️';
-        label.textContent = 'Voz';
-    } else {
-        btn.classList.remove('active');
-        icon.textContent = '🤐';
-        label.textContent = 'Sin voz';
-        if (typeof speechSynthesis !== 'undefined') {
-            speechSynthesis.cancel();
+    if (btn && icon && label) {
+        if (state.voiceEnabled) {
+            btn.classList.add('active');
+            icon.textContent = '🗣️';
+            label.textContent = 'Voz';
+        } else {
+            btn.classList.remove('active');
+            icon.textContent = '🤐';
+            label.textContent = 'Sin voz';
+            if (typeof speechSynthesis !== 'undefined') {
+                speechSynthesis.cancel();
+            }
         }
+    }
+
+    if (lobbyToggle) {
+        lobbyToggle.checked = state.voiceEnabled;
     }
 }
 

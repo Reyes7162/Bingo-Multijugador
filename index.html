@@ -30,77 +30,365 @@
     <div id="confetti-container"></div>
 
     <!-- Lobby / Welcome Screen -->
-    <div id="lobby-screen" class="lobby-overlay">
-        <div class="lobby-content glass-panel">
-            <h1 class="logo lobby-logo">
-                <span class="logo-icon">🎱</span>
-                <span class="logo-text">BINGO</span>
-            </h1>
-            <p class="lobby-tagline">Elige cómo jugar hoy con tus amigos y familia</p>
-
-            <!-- Main Mode Selection Grid -->
-            <div id="lobby-modes-main" class="lobby-modes-grid">
-                <!-- Host Mode -->
-                <button class="lobby-mode-card" onclick="selectGameMode('host')">
-                    <div class="mode-card-badge" style="background: var(--gradient-purple);">Anfitrión</div>
-                    <span class="lobby-mode-icon">📢</span>
-                    <h3 class="lobby-mode-title">Crear Nueva Sala</h3>
-                    <p class="lobby-mode-desc">Ideal para PC o conectar a la TV. Tú creas la sala, controlas el bolillero y cantas las bolillas del juego. Tus amigos se unirán usando tu código único.</p>
-                </button>
-
-                <!-- Player Mode -->
-                <button class="lobby-mode-card" onclick="selectGameMode('player')">
-                    <div class="mode-card-badge" style="background: var(--gradient-amber); color: var(--text-dark);">Jugador</div>
-                    <span class="lobby-mode-icon">🎟️</span>
-                    <h3 class="lobby-mode-title">Unirse a una Sala</h3>
-                    <p class="lobby-mode-desc">Ideal para jugar desde tu teléfono celular. Ingresa el código de la sala de tu amigo, compra tus propios cartones y marca los números en vivo.</p>
-                </button>
-            </div>
-
-            <!-- Connection & Setup Form (Animated slide-in, initially hidden) -->
-            <div id="connection-setup" class="connection-box hidden">
-                <h3 id="setup-title" class="lobby-mode-title text-center">Configurar Conexión</h3>
-                
-                <div id="setup-room-code-group" class="input-group hidden">
-                    <label for="room-code-input">Código de la Sala (4 dígitos):</label>
-                    <input type="text" id="room-code-input" class="modern-input" placeholder="Ej: 1234" maxlength="4" style="text-align: center; letter-spacing: 8px; font-weight: 800; font-size: 1.5rem; text-transform: uppercase;">
-                </div>
-                
-                <div id="setup-name-group" class="input-group">
-                    <label for="player-name-input">Nombre en el Juego:</label>
-                    <input type="text" id="player-name-input" class="modern-input" placeholder="Tu apodo o nombre..." maxlength="12">
-                </div>
-                
-                <div class="color-picker-wrapper mt-sm" id="setup-color-picker">
-                    <p class="color-picker-label">Color de tu Ficha:</p>
-                    <div class="color-options">
-                        <div class="color-opt color-purple active" data-color="#8b5cf6" onclick="selectPlayerColor(this, '#8b5cf6')"></div>
-                        <div class="color-opt color-blue" data-color="#3b82f6" onclick="selectPlayerColor(this, '#3b82f6')"></div>
-                        <div class="color-opt color-emerald" data-color="#10b981" onclick="selectPlayerColor(this, '#10b981')"></div>
-                        <div class="color-opt color-amber" data-color="#f59e0b" onclick="selectPlayerColor(this, '#f59e0b')"></div>
-                        <div class="color-opt color-pink" data-color="#ec4899" onclick="selectPlayerColor(this, '#ec4899')"></div>
+    <div id="lobby-screen" class="lobby-overlay-premium">
+        <div class="lobby-premium-wrapper">
+            
+            <!-- Top Header Stats -->
+            <header class="lobby-premium-header">
+                <!-- Profile Section -->
+                <div class="lobby-profile-section" onclick="editProfileName()">
+                    <div class="lobby-profile-avatar-container">
+                        <div class="lobby-profile-avatar">👤</div>
+                        <div class="lobby-profile-level-badge">
+                            <span class="level-star">⭐</span>
+                            <span class="level-number">84</span>
+                        </div>
+                    </div>
+                    <div class="lobby-profile-info">
+                        <span id="lobby-display-name" class="lobby-profile-name">Tu Nombre</span>
+                        <div class="lobby-profile-xp-bar-bg">
+                            <div class="lobby-profile-xp-bar-fill" style="width: 65%;"></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="input-group mt-sm">
-                    <label for="server-url-input">Dirección del Servidor:</label>
-                    <input type="text" id="server-url-input" class="modern-input" placeholder="Detectando automáticamente...">
-                </div>
+                <!-- Currency Counters -->
+                <div class="lobby-currency-counters">
+                    <!-- Coins Counter -->
+                    <div class="lobby-currency-card coins">
+                        <span class="currency-icon">🪙</span>
+                        <span id="lobby-coins-display" class="currency-value">309,765</span>
+                        <button class="currency-add-btn" onclick="addCoinsDemo()">+</button>
+                    </div>
 
-                <div class="setup-actions">
-                    <button class="btn-primary w-100" onclick="connectToServer()">
-                        <span class="btn-icon">🔌</span>
-                        <span id="setup-connect-btn-text">¡Crear Sala en Vivo!</span>
+                    <!-- Gems Counter -->
+                    <div class="lobby-currency-card gems">
+                        <span class="currency-icon">💎</span>
+                        <span id="lobby-gems-display" class="currency-value">8,124</span>
+                        <button class="currency-add-btn" onclick="addGemsDemo()">+</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Central Body Layout -->
+            <div class="lobby-premium-body">
+                
+                <!-- Left Column Side Buttons -->
+                <aside class="lobby-side-column left">
+                    <button class="lobby-side-btn gear" onclick="toggleSettings()" title="Ajustes">
+                        <span class="side-btn-icon">⚙️</span>
                     </button>
-                    <button class="btn-outline w-100 mt-xs" onclick="cancelSetup()">
-                        <span>Cancelar</span>
+                    <button class="lobby-side-btn friends" onclick="alert('Próximamente: Lista de amigos y salas sociales')" title="Amigos">
+                        <span class="side-btn-icon">👥</span>
+                    </button>
+                    <button class="lobby-side-btn gift" onclick="claimDailyGift()" title="Regalo Diario">
+                        <span class="side-btn-icon">🎁</span>
+                    </button>
+                </aside>
+
+                <!-- Central Area with Logo & Main Grid -->
+                <main class="lobby-central-area">
+                    <!-- Title/Logo area -->
+                    <div class="lobby-logo-3d-container">
+                        <h1 class="logo-3d-text">BINGO</h1>
+                        <div class="logo-3d-sub">MULTIJUGADOR</div>
+                        <!-- Floating bingo balls decorative -->
+                        <div class="floating-balls-deco">
+                            <div class="deco-ball ball-b">B4</div>
+                            <div class="deco-ball ball-i">I19</div>
+                            <div class="deco-ball ball-n">N35</div>
+                            <div class="deco-ball ball-g">G56</div>
+                            <div class="deco-ball ball-o">O72</div>
+                        </div>
+                    </div>
+
+                    <!-- Main Mode Selection Grid (2x2) -->
+                    <div id="lobby-modes-main" class="lobby-modes-grid-premium">
+                        <!-- Online / Host Mode (Green) -->
+                        <button class="lobby-mode-btn-premium host-btn-3d" onclick="selectGameMode('host')">
+                            <div class="btn-3d-gloss"></div>
+                            <div class="btn-3d-content">
+                                <div class="btn-3d-icon-container">
+                                    <span class="btn-3d-icon">📢</span>
+                                </div>
+                                <h3 class="btn-3d-title">Crear Sala</h3>
+                                <span class="btn-3d-subtitle">Anfitrión (PC/TV)</span>
+                            </div>
+                        </button>
+
+                        <!-- Play with Friends / Player Mode (Pink) -->
+                        <button class="lobby-mode-btn-premium player-btn-3d" onclick="selectGameMode('player')">
+                            <div class="btn-3d-gloss"></div>
+                            <div class="btn-3d-content">
+                                <div class="btn-3d-icon-container">
+                                    <span class="btn-3d-icon">🎟️</span>
+                                </div>
+                                <h3 class="btn-3d-title">Unirse a Sala</h3>
+                                <span class="btn-3d-subtitle">Jugador (Celular)</span>
+                            </div>
+                        </button>
+
+                        <!-- Versus Computer Mode (Yellow) - Labeled locked/próximamente -->
+                        <button class="lobby-mode-btn-premium computer-btn-3d locked" onclick="alert('Modo Contra PC: ¡Próximamente en la siguiente actualización!')">
+                            <div class="btn-3d-gloss"></div>
+                            <div class="btn-3d-content">
+                                <div class="btn-3d-icon-container">
+                                    <span class="btn-3d-icon">🤖</span>
+                                </div>
+                                <h3 class="btn-3d-title">Contra PC</h3>
+                                <span class="btn-3d-subtitle">Práctica (Solo)</span>
+                                <div class="lock-overlay">🔒 Locked</div>
+                            </div>
+                        </button>
+
+                        <!-- Local Board Mode (Blue) - Labeled locked/próximamente -->
+                        <button class="lobby-mode-btn-premium local-btn-3d locked" onclick="alert('Modo Local / Sin Red: ¡Próximamente!')">
+                            <div class="btn-3d-gloss"></div>
+                            <div class="btn-3d-content">
+                                <div class="btn-3d-icon-container">
+                                    <span class="btn-3d-icon">🏠</span>
+                                </div>
+                                <h3 class="btn-3d-title">Modo Local</h3>
+                                <span class="btn-3d-subtitle">Sin Conexión</span>
+                                <div class="lock-overlay">🔒 Locked</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Connection & Setup Form (This form drops down / slides in over the grid when a mode is chosen) -->
+                    <div id="connection-setup" class="connection-box-premium hidden">
+                        <h3 id="setup-title" class="setup-premium-title">📢 Configurar Anfitrión</h3>
+                        
+                        <div id="setup-room-code-group" class="input-group-premium hidden">
+                            <label for="room-code-input">Código de la Sala (4 dígitos):</label>
+                            <input type="text" id="room-code-input" class="modern-input-premium" placeholder="Ej: 1234" maxlength="4" style="text-align: center; letter-spacing: 8px; font-weight: 800; font-size: 1.5rem; text-transform: uppercase;">
+                        </div>
+                        
+                        <div id="setup-name-group" class="input-group-premium">
+                            <label for="player-name-input">Nombre en el Juego:</label>
+                            <input type="text" id="player-name-input" class="modern-input-premium" placeholder="Tu apodo..." maxlength="12">
+                        </div>
+                        
+                        <div class="color-picker-wrapper-premium mt-sm" id="setup-color-picker">
+                            <p class="color-picker-label-premium">Color de tu Ficha:</p>
+                            <div class="color-options-premium">
+                                <div class="color-opt-premium color-purple active" data-color="#8b5cf6" onclick="selectPlayerColor(this, '#8b5cf6')"></div>
+                                <div class="color-opt-premium color-blue" data-color="#3b82f6" onclick="selectPlayerColor(this, '#3b82f6')"></div>
+                                <div class="color-opt-premium color-emerald" data-color="#10b981" onclick="selectPlayerColor(this, '#10b981')"></div>
+                                <div class="color-opt-premium color-amber" data-color="#f59e0b" onclick="selectPlayerColor(this, '#f59e0b')"></div>
+                                <div class="color-opt-premium color-pink" data-color="#ec4899" onclick="selectPlayerColor(this, '#ec4899')"></div>
+                            </div>
+                        </div>
+
+                        <div class="input-group-premium mt-sm">
+                            <label for="server-url-input">Dirección del Servidor:</label>
+                            <input type="text" id="server-url-input" class="modern-input-premium" placeholder="Detectando automáticamente...">
+                        </div>
+
+                        <div class="setup-actions-premium">
+                            <button class="btn-premium-action green" onclick="connectToServer()">
+                                <span id="setup-connect-btn-text">¡Crear Sala en Vivo!</span>
+                            </button>
+                            <button class="btn-premium-action red mt-xs" onclick="cancelSetup()">
+                                <span>Cancelar</span>
+                            </button>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Right Column Side Buttons -->
+                <aside class="lobby-side-column right">
+                    <button class="lobby-side-btn wheel" onclick="spinLuckyWheel()" title="Ruleta de la Suerte">
+                        <span class="side-btn-icon">🎡</span>
+                    </button>
+                    <button class="lobby-side-btn add-friend" onclick="alert('Próximamente: Añadir amigos por ID')" title="Añadir Amigo">
+                        <span class="side-btn-icon">👤➕</span>
+                    </button>
+                    <button class="lobby-side-btn lucky7" onclick="playSlotsDemo()" title="Slots de la Suerte">
+                        <span class="side-btn-icon">🎰</span>
+                    </button>
+                </aside>
+            </div>
+
+            <!-- Bottom Navigation Tabs Footer -->
+            <footer class="lobby-premium-footer">
+                <button class="lobby-footer-tab" onclick="showLobbyMessage('🏆 Clasificación', 'Próximamente: Tabla de Clasificación Global. ¡Compite por ser el rey del Bingo!')" title="Clasificación">
+                    <span class="footer-tab-icon">🏆</span>
+                </button>
+                <button class="lobby-footer-tab" onclick="showLobbyMessage('🏅 Logros', 'Próximamente: Logros y Misiones diarias para ganar Monedas y Gemas.')" title="Logros">
+                    <span class="footer-tab-icon">🏅</span>
+                </button>
+                <button class="lobby-footer-tab active" title="Inicio">
+                    <div class="home-tab-raised">
+                        <span class="footer-tab-icon home">🏠</span>
+                    </div>
+                </button>
+                <button class="lobby-footer-tab" onclick="showLobbyMessage('🎲 Historial', 'Próximamente: Consulta tus últimas partidas, cartones comprados y premios ganados.')" title="Historial">
+                    <span class="footer-tab-icon">🎲</span>
+                </button>
+                <button class="lobby-footer-tab" onclick="showLobbyMessage('🏪 Tienda', 'Próximamente: Tienda de Skins, Fichas personalizadas, Marcos dorados y Emoticones.')" title="Tienda">
+                    <span class="footer-tab-icon">🏪</span>
+                </button>
+            </footer>
+
+            <!-- =============================================
+                 PREMIUM MODALS INSIDE MOBILE FRAME
+                 ============================================= -->
+
+            <!-- 1. Lobby Settings Modal -->
+            <div id="lobby-settings-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">⚙️ Ajustes</h3>
+                    <p class="premium-modal-subtitle">Configura tus preferencias</p>
+                    
+                    <div class="premium-settings-options">
+                        <div class="premium-setting-item">
+                            <span class="setting-label">🔊 Efectos de Sonido</span>
+                            <label class="premium-switch">
+                                <input type="checkbox" id="lobby-sound-toggle" checked onchange="toggleSound()">
+                                <span class="premium-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="premium-setting-item">
+                            <span class="setting-label">🗣️ Voz de Bolillero</span>
+                            <label class="premium-switch">
+                                <input type="checkbox" id="lobby-voice-toggle" checked onchange="toggleVoice()">
+                                <span class="premium-slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="premium-setting-item-select">
+                            <span class="setting-label">🌐 Idioma de Voz</span>
+                            <select id="lobby-voice-lang-select" class="premium-select" onchange="changeVoiceLanguage(this.value)">
+                                <option value="es-MX">Español Latino (es-MX)</option>
+                                <option value="es-ES">Español España (es-ES)</option>
+                                <option value="es-AR">Español Argentina (es-AR)</option>
+                                <option value="es-CO">Español Colombia (es-CO)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('lobby-settings-modal')">
+                        <span>Aceptar</span>
                     </button>
                 </div>
             </div>
 
-            <div class="lobby-footer mt-md">
-                <p>💸 Todos los modos incluyen saldo inicial de 100 monedas para comprar cartones.</p>
+            <!-- 2. Lucky Wheel (Ruleta) Modal -->
+            <div id="lucky-wheel-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🎡 Ruleta de la Suerte</h3>
+                    <p class="premium-modal-subtitle">¡Gira y gana fabulosos premios!</p>
+                    
+                    <div class="wheel-outer-container">
+                        <div class="wheel-pointer">▼</div>
+                        <div class="wheel-glow"></div>
+                        <div id="lucky-wheel-canvas-container">
+                            <canvas id="lucky-wheel-canvas" width="220" height="220"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="wheel-actions">
+                        <button id="spin-wheel-btn" class="btn-premium-action green" onclick="spinWheelAction()">
+                            <span>¡GIRAR GRATIS!</span>
+                        </button>
+                        <button class="btn-premium-action red mt-xs" onclick="closeLobbyModal('lucky-wheel-modal')">
+                            <span>Cerrar</span>
+                        </button>
+                    </div>
+                </div>
             </div>
+
+            <!-- 3. Slots (Tragamonedas) Modal -->
+            <div id="slots-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🎰 Slots de la Suerte</h3>
+                    <p class="premium-modal-subtitle">¡Alinea tres símbolos iguales!</p>
+                    
+                    <div class="slots-machine-container">
+                        <div class="slots-glass-window">
+                            <!-- Reels Grid -->
+                            <div class="slots-reels-row">
+                                <div class="slot-reel" id="reel-1">
+                                    <div class="reel-strip" id="strip-1">
+                                        <div class="slot-symbol">🍒</div>
+                                    </div>
+                                </div>
+                                <div class="slot-reel" id="reel-2">
+                                    <div class="reel-strip" id="strip-2">
+                                        <div class="slot-symbol">🔔</div>
+                                    </div>
+                                </div>
+                                <div class="slot-reel" id="reel-3">
+                                    <div class="reel-strip" id="strip-3">
+                                        <div class="slot-symbol">7️⃣</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="slots-payout-info">
+                            <div>7️⃣ 7️⃣ 7️⃣ = Jackpot! +10k 🪙 +500 💎</div>
+                            <div>💎 💎 💎 = +5,000 🪙 +250 💎</div>
+                            <div>3x Emojis = +1,000 🪙</div>
+                            <div>2x Emojis = +100 🪙</div>
+                        </div>
+                    </div>
+                    
+                    <div class="slots-actions">
+                        <button id="spin-slots-btn" class="btn-premium-action green" onclick="spinSlotsAction()">
+                            <span>Jugar (100 🪙)</span>
+                        </button>
+                        <button class="btn-premium-action red mt-xs" onclick="closeLobbyModal('slots-modal')">
+                            <span>Cerrar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Daily Gift Modal -->
+            <div id="daily-gift-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 class="premium-modal-title">🎁 Regalo Diario</h3>
+                    <p class="premium-modal-subtitle">¡Vuelve cada día para una recompensa!</p>
+                    
+                    <div class="daily-gift-container">
+                        <div class="gift-box-wrapper" id="gift-box-visual" onclick="claimDailyGiftAction()">
+                            <div class="gift-box-sparkle s1">✨</div>
+                            <div class="gift-box-sparkle s2">⭐</div>
+                            <div class="gift-box-sparkle s3">✨</div>
+                            <div class="gift-box-visual-inner">
+                                <div class="gift-lid"></div>
+                                <div class="gift-ribbon"></div>
+                                <div class="gift-body">🎁</div>
+                            </div>
+                        </div>
+                        <p id="gift-prompt-text" class="gift-prompt-text">¡Toca el regalo para abrirlo!</p>
+                    </div>
+                    
+                    <div class="gift-actions hidden" id="gift-actions-panel">
+                        <button class="btn-premium-action green" onclick="closeLobbyModal('daily-gift-modal')">
+                            <span>¡Excelente!</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Generic Message Modal -->
+            <div id="lobby-message-modal" class="lobby-premium-modal hidden">
+                <div class="lobby-premium-modal-content">
+                    <h3 id="message-modal-title" class="premium-modal-title">📢 Próximamente</h3>
+                    <p id="message-modal-text" class="premium-modal-text">Esta función estará disponible muy pronto.</p>
+                    <button class="btn-premium-action green mt-md" onclick="closeLobbyModal('lobby-message-modal')">
+                        <span>Entendido</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. Floating Toasts Container -->
+            <div id="lobby-toast-container" class="lobby-toast-container"></div>
+
         </div>
     </div>
 
